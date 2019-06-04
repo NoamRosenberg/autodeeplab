@@ -6,7 +6,9 @@ class Path(object):
         elif dataset == 'sbd':
             return '/path/to/datasets/benchmark_RELEASE/'  # folder that contains dataset/.
         elif dataset == 'cityscapes':
-            return '/path/to/datasets/cityscapes/'     # foler that contains leftImg8bit/
+            return '/data/deeplearning/cityscapes/'     # foler that contains leftImg8bit/
+        elif dataset == 'kd':
+            return '/data/deeplearning/cityscapes/'
         elif dataset == 'coco':
             return '/data/deeplearning/dataset/coco2017'
         else:
