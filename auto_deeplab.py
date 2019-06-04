@@ -10,11 +10,7 @@ from operations import *
 class AutoDeeplab (nn.Module) :
     def __init__(self, num_classes, num_layers, criterion, num_channel = 20, multiplier = 5, step = 5, cell=model_search.Cell):
         super(AutoDeeplab, self).__init__()
-        self.level_2 = []
-        self.level_4 = []
-        self.level_8 = []
-        self.level_16 = []
-        self.level_32 = []
+
         self.cells = nn.ModuleList()
         self._num_layers = num_layers
         self._num_classes = num_classes
@@ -157,18 +153,24 @@ class AutoDeeplab (nn.Module) :
             ASPP (self._num_channel * 8, 256, 6, 6)
         )
         self.final_conv = nn.Conv2d (1024, num_classes, 1, stride= 1, padding= 0)
+        #self.final_conv = nn.Conv2d(300, num_classes, 1, stride=1, padding=0)
+        #self.up_sample = nn.Upsample(size=[224,224], mode='bilinear', align_corners=True)
 
 
 
     def forward (self, x) :
         # self._init_level_arr (x)
+        self.level_2 = []
+        self.level_4 = []
+        self.level_8 = []
+        self.level_16 = []
+        self.level_32 = []
         temp = self.stem0 (x)
         self.level_2.append (self.stem1 (temp))
         self.level_4.append (self.stem2 (self.level_2[-1]))
         weight_cells = F.softmax(self.alphas_cell, dim=-1)
         weight_network = F.softmax (self.alphas_network, dim = -1)
         count = 0
-        weight_network = F.softmax (self.alphas_network, dim = -1)
         weight_cells = F.softmax(self.alphas_cell, dim=-1)
         for layer in range (self._num_layers) :
 
@@ -309,7 +311,6 @@ class AutoDeeplab (nn.Module) :
         # print (self.level_4[-1].size(),self.level_8[-1].size(),self.level_16[-1].size(),self.level_32[-1].size())
         # concate_feature_map = torch.cat ([self.level_4[-1], self.level_8[-1],self.level_16[-1], self.level_32[-1]], 1)
         aspp_result_4 = self.aspp_4 (self.level_4[-1])
-
         aspp_result_8 = self.aspp_8 (self.level_8[-1])
         aspp_result_16 = self.aspp_16 (self.level_16[-1])
         aspp_result_32 = self.aspp_32 (self.level_32[-1])
@@ -318,8 +319,18 @@ class AutoDeeplab (nn.Module) :
         aspp_result_8 = upsample (aspp_result_8)
         aspp_result_16 = upsample (aspp_result_16)
         aspp_result_32 = upsample (aspp_result_32)
+
+         # SKIP ASPP
+#        aspp_result_4 = self.up_sample (self.level_4[-1])
+#        aspp_result_8 = self.up_sample (self.level_8[-1])
+#        aspp_result_16 = self.up_sample (self.level_16[-1])
+#        aspp_result_32 = self.up_sample (self.level_32[-1])
+
+
         concate_feature_map = torch.cat ([aspp_result_4, aspp_result_8, aspp_result_16, aspp_result_32], 1)
+
         out = self.final_conv (concate_feature_map)
+
         return out
 
     def _initialize_alphas(self):
