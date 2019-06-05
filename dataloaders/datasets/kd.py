@@ -6,9 +6,10 @@ from torch.utils import data
 from mypath import Path
 from torchvision import transforms
 from dataloaders import custom_transforms as tr
+import pandas as pd
 
 class CityscapesSegmentation(data.Dataset):
-    NUM_CLASSES = 19
+    NUM_CLASSES = 7
 
     def __init__(self, args, root=Path.db_root_dir('cityscapes'), split="train"):
 
@@ -21,17 +22,10 @@ class CityscapesSegmentation(data.Dataset):
         self.annotations_base = os.path.join(self.root, 'kd-cityscapes-gt', self.split)
 
         self.files[split] = self.recursive_glob(rootdir=self.images_base, suffix='.png')
+        self.map = pd.read_csv('label_map.txt', header=0, sep='\t')
+        self.map['#id'] = self.map['#id'] + 6
 
-        self.void_classes = [0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30, -1]
-        self.valid_classes = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
-        self.class_names = ['unlabelled', 'road', 'sidewalk', 'building', 'wall', 'fence', \
-                            'pole', 'traffic_light', 'traffic_sign', 'vegetation', 'terrain', \
-                            'sky', 'person', 'rider', 'car', 'truck', 'bus', 'train', \
-                            'motorcycle', 'bicycle']
-
-        self.ignore_index = 255
-        self.class_map = dict(zip(self.valid_classes, range(self.NUM_CLASSES)))
-
+        self.dict_map = dict(zip(self.map['#id'],self.map['categoryId']))
         if not self.files[split]:
             raise Exception("No files for split=[%s] found in %s" % (split, self.images_base))
 
@@ -62,11 +56,11 @@ class CityscapesSegmentation(data.Dataset):
             return self.transform_ts(sample)
 
     def encode_segmap(self, mask):
-        # Put all void classes to zero
-        for _voidc in self.void_classes:
-            mask[mask == _voidc] = self.ignore_index
-        for _validc in self.valid_classes:
-            mask[mask == _validc] = self.class_map[_validc]
+
+        mask = mask + 6
+        for label_id, cl in self.dict_map.items():
+            mask[mask == label_id] = cl
+
         return mask
 
     def recursive_glob(self, rootdir='.', suffix=''):

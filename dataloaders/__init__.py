@@ -1,4 +1,4 @@
-from dataloaders.datasets import cityscapes, coco, combine_dbs, pascal, sbd
+from dataloaders.datasets import cityscapes, kd, coco, combine_dbs, pascal, sbd
 from torch.utils.data import DataLoader
 
 def make_data_loader(args, **kwargs):
@@ -39,9 +39,9 @@ def make_data_loader(args, **kwargs):
         return train_loader, train_loader, val_loader, test_loader, num_class
 
     elif args.dataset == 'kd':
-        train_set = cityscapes.CityscapesSegmentation(args, split='train')
-        val_set = cityscapes.CityscapesSegmentation(args, split='val')
-        test_set = cityscapes.CityscapesSegmentation(args, split='test')
+        train_set = kd.CityscapesSegmentation(args, split='train')
+        val_set = kd.CityscapesSegmentation(args, split='val')
+        test_set = kd.CityscapesSegmentation(args, split='test')
         num_class = train_set.NUM_CLASSES
         train_loader1 = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, **kwargs)
         train_loader2 = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, **kwargs)
