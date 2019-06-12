@@ -46,7 +46,7 @@ class Trainer(object):
         self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
 
         # Define network
-        model = AutoDeeplab (21, 12, self.criterion)
+        model = AutoDeeplab (num_classes=self.nclass, num_layers=12, self.criterion)
         optimizer = torch.optim.SGD(
                 model.parameters(),
                 args.lr,
@@ -137,7 +137,7 @@ class Trainer(object):
             is_best = False
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
+                'state_dict': self.model.state_dict(),
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, is_best)
