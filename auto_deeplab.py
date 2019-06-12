@@ -152,7 +152,7 @@ class AutoDeeplab (nn.Module) :
         self.aspp_32 = nn.Sequential (
             ASPP (self._num_channel * 8, 256, 6, 6)
         )
-        self.final_conv = nn.Conv2d (1024, num_classes, 1, stride= 1, padding= 0)
+        self.final_conv = nn.Conv2d (1024, self._num_classes, 1, stride= 1, padding= 0)
         #self.final_conv = nn.Conv2d(300, num_classes, 1, stride=1, padding=0)
         #self.up_sample = nn.Upsample(size=[224,224], mode='bilinear', align_corners=True)
 
