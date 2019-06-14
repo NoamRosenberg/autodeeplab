@@ -168,7 +168,6 @@ class AutoDeeplab (nn.Module) :
         temp = self.stem0 (x)
         self.level_2.append (self.stem1 (temp))
         self.level_4.append (self.stem2 (self.level_2[-1]))
-        weight_cells = F.softmax(self.alphas_cell, dim=-1)
         weight_network = F.softmax (self.alphas_network, dim = -1)
         count = 0
         weight_cells = F.softmax(self.alphas_cell, dim=-1)
