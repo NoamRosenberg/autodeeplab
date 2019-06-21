@@ -168,9 +168,13 @@ class AutoDeeplab (nn.Module) :
         temp = self.stem0 (x)
         self.level_2.append (self.stem1 (temp))
         self.level_4.append (self.stem2 (self.level_2[-1]))
-        weight_network = F.softmax (self.alphas_network, dim = -1)
+
         count = 0
+        img_device = torch.device('cuda', x.get_device())
+        self.alphas_cell = self.alphas_cell.to(device=img_device)
+        self.alphas_network = self.alphas_network.to(device=img_device)
         weight_cells = F.softmax(self.alphas_cell, dim=-1)
+        weight_network = F.softmax (self.alphas_network, dim = -1)
         for layer in range (self._num_layers) :
 
             if layer == 0 :
@@ -579,7 +583,7 @@ class AutoDeeplab (nn.Module) :
 
 
 def main () :
-    model = AutoDeeplab (5, 12, None)
+    model = AutoDeeplab (7, 12, None)
     x = torch.tensor (torch.ones (4, 3, 224, 224))
     result = model.decode_network ()
     print (result)

@@ -2,6 +2,7 @@ import argparse
 import os
 import numpy as np
 from tqdm import tqdm
+import torch
 
 from mypath import Path
 from dataloaders import make_data_loader
@@ -50,20 +51,8 @@ class Trainer(object):
                 momentum=args.momentum,
                 weight_decay=args.weight_decay
             )
-        self.model, self.optimizer = model, optimizer
-
-        # Using cuda
-        if args.cuda:
-            self.model = torch.nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
-            patch_replication_callback(self.model)
-            self.model = self.model.cuda()
-            print ('cuda finished')
-
-
-        # Define Optimizer
 
         self.model, self.optimizer = model, optimizer
-
         # Define Evaluator
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
@@ -71,6 +60,16 @@ class Trainer(object):
                                             args.epochs, len(self.train_loader1))
 
         self.architect = Architect (self.model, args)
+
+
+        # Using cuda
+        if args.cuda:
+            self.model = torch.nn.DataParallel(self.model.cuda())
+            #patch_replication_callback(self.model)
+            self.model = self.model.cuda()
+            print ('cuda finished')
+
+
         # Resuming checkpoint
         self.best_pred = 0.0
         if args.resume is not None:
@@ -99,15 +98,14 @@ class Trainer(object):
         num_img_tr = len(self.train_loader1)
         for i, sample in enumerate(tbar):
             image, target = sample['image'], sample['label']
-            search = next (iter (self.train_loader2))
-            image_search, target_search = search['image'], search['label']
-            # print ('------------------------begin-----------------------')
             if self.args.cuda:
                 image, target = image.cuda(), target.cuda()
-                image_search, target_search = image_search.cuda (), target_search.cuda () 
-                # print ('cuda finish')
-
-            self.architect.step (image_search, target_search)
+            if epoch > self.args.alpha_epoch:
+                search = next(iter(self.train_loader2))
+                image_search, target_search = search['image'], search['label']
+                if self.args.cuda:
+                    image_search, target_search = image_search.cuda (), target_search.cuda ()
+                self.architect.step (image_search, target_search)
             self.scheduler(self.optimizer, i, epoch, self.best_pred)
             self.optimizer.zero_grad()
             output = self.model(image)
@@ -215,6 +213,8 @@ def main():
                         help='number of epochs to train (default: auto)')
     parser.add_argument('--start_epoch', type=int, default=0,
                         metavar='N', help='start epochs (default:0)')
+    parser.add_argument('--alpha_epoch', type=int, default=5,
+                        metavar='N', help='epoch to start training alphas')
     parser.add_argument('--batch-size', type=int, default=1,
                         metavar='N', help='input batch size for \
                                 training (default: auto)')
@@ -310,7 +310,6 @@ def main():
     print('Starting Epoch:', trainer.args.start_epoch)
     print('Total Epoches:', trainer.args.epochs)
     for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
-        trainer.validation
         trainer.training(epoch)
         if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
             trainer.validation(epoch)
