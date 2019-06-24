@@ -2,13 +2,25 @@
 
 ## Requirements
 
-[1]: Pytorch version 1.1
+* Pytorch version 1.1
 
-[2]: Python 3 
+* Python 3
+
+* tensorboardX
+
+* torchvision
+
+* pycocotools
+
+* tqdm
+
+* numpy
 
 ## Train
 
-The dataloader module is built on this [repo](https://github.com/jfzhang95/pytorch-deeplab-xception)
+```
+CUDA_VISIBLE_DEVICES=7 python train_autodeeplab.py --dataset kd --batch-size 2 --checkname alpha5epoch --resume /AutoDeeplabpath/checkpoint.pth.tar
+```
 
 ## Reference
 [1] : [Auto-DeepLab: Hierarchical Neural Architecture Search for Semantic Image Segmentation](https://arxiv.org/abs/1901.02985)
