@@ -1,4 +1,4 @@
-# AutoML for Segmentation and Detection
+# AutoML for Image Segmentation and Detection
 This is an open-source project of AutoML for detection and segmentation.
 
 Currently this repo contains an implementation for AutoDeeplab / auto-deeplab.
