@@ -1,6 +1,6 @@
 # AutoDeeplab
 
-## Requirements
+## Requirements for auto-deeplab
 
 * Pytorch version 1.1
 
