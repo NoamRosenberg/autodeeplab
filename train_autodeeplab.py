@@ -78,7 +78,7 @@ class Trainer(object):
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             if args.cuda:
-                self.model.load_state_dict(checkpoint['state_dict'])
+                self.model.module.load_state_dict(checkpoint['state_dict'])
             else:
                 self.model.load_state_dict(checkpoint['state_dict'])
             if not args.ft:
