@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from operations import *
 
 class AutoDeeplab (nn.Module) :
-    def __init__(self, num_classes, num_layers, criterion, num_channel = 20, multiplier = 5, step = 5, cell=model_search.Cell):
+    def __init__(self, num_classes, num_layers, criterion, num_channel = 40, multiplier = 5, step = 5, cell=model_search.Cell):
         super(AutoDeeplab, self).__init__()
 
         self.cells = nn.ModuleList()
@@ -141,16 +141,16 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell4_1]
                 self.cells += [cell4_2]
         self.aspp_4 = nn.Sequential (
-            ASPP (self._num_channel, 256, 6, 6)
+            ASPP (self._num_channel, 256, 24, 24)
         )
         self.aspp_8 = nn.Sequential (
-            ASPP (self._num_channel * 2, 256, 6, 6)
+            ASPP (self._num_channel * 2, 256, 12, 12)
         )
         self.aspp_16 = nn.Sequential (
             ASPP (self._num_channel * 4, 256, 6, 6)
         )
         self.aspp_32 = nn.Sequential (
-            ASPP (self._num_channel * 8, 256, 6, 6)
+            ASPP (self._num_channel * 8, 256, 3, 3)
         )
         self.final_conv = nn.Conv2d (1024, self._num_classes, 1, stride= 1, padding= 0)
         #self.final_conv = nn.Conv2d(300, num_classes, 1, stride=1, padding=0)
