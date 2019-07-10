@@ -1,6 +1,9 @@
-# AutoDeeplab
+# AutoML for Segmentation and Detection
+This is an open-source project of AutoML for detection and segmentation.
 
-## Requirements for auto-deeplab
+Currently this repo contains an implementation for AutoDeeplab / auto-deeplab.
+
+## Requirements
 
 * Pytorch version 1.1
 
