@@ -64,7 +64,8 @@ class Trainer(object):
 
         # Using cuda
         if args.cuda:
-            self.model = torch.nn.DataParallel(self.model.cuda())
+            if torch.cuda.device_count() > 1:
+                self.model = torch.nn.DataParallel(self.model.cuda())
             #patch_replication_callback(self.model)
             self.model = self.model.cuda()
             print ('cuda finished')
@@ -78,7 +79,7 @@ class Trainer(object):
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             if args.cuda:
-                self.model.module.load_state_dict(checkpoint['state_dict'])
+                self.model.load_state_dict(checkpoint['state_dict'])
             else:
                 self.model.load_state_dict(checkpoint['state_dict'])
             if not args.ft:
@@ -129,9 +130,13 @@ class Trainer(object):
         if self.args.no_val:
             # save checkpoint every epoch
             is_best = False
+            if torch.cuda.device_count() > 1:
+                state_dict = self.model.module.state_dict()
+            else:
+                state_dict = self.model.state_dict()
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
+                'state_dict': state_dict,
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, is_best)
@@ -176,9 +181,13 @@ class Trainer(object):
         if new_pred > self.best_pred:
             is_best = True
             self.best_pred = new_pred
+            if torch.cuda.device_count() > 1:
+                state_dict = self.model.module.state_dict()
+            else:
+                state_dict = self.model.state_dict()
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
+                'state_dict': state_dict,
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, is_best)
