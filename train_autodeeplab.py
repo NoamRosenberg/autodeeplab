@@ -78,8 +78,10 @@ class Trainer(object):
                 raise RuntimeError("=> no checkpoint found at '{}'" .format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
-
-            if args.cuda and (args.load_module or torch.cuda.device_count() > 1):
+            #I changed the saving mechanism so parallel models would save layers without wrapping them in module
+            #to manually load a model that has already been saved with the regular model.load_model then set
+            #load_module to 1
+            if args.cuda and args.load_module:
                 self.model.module.load_state_dict(checkpoint['state_dict'])
 
             elif args.cuda and not args.load_module:
