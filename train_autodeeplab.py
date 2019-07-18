@@ -2,6 +2,7 @@ import argparse
 import os
 import numpy as np
 from tqdm import tqdm
+import sys
 import torch
 from collections import OrderedDict
 from mypath import Path
@@ -64,12 +65,17 @@ class Trainer(object):
 
         # Using cuda
         if args.cuda:
-            if (torch.cuda.device_count() > 1 or args.load_module):
+            if (torch.cuda.device_count() > 1 or args.load_parallel):
                 self.model = torch.nn.DataParallel(self.model.cuda())
-            #patch_replication_callback(self.model)
+                patch_replication_callback(self.model)
             self.model = self.model.cuda()
             print ('cuda finished')
 
+        #checkpoint = torch.load(args.resume)
+        #print('about to load state_dict')
+        #self.model.load_state_dict(checkpoint['state_dict'])
+        #print('model loaded')
+        #sys.exit()
 
         # Resuming checkpoint
         self.best_pred = 0.0
@@ -78,25 +84,22 @@ class Trainer(object):
                 raise RuntimeError("=> no checkpoint found at '{}'" .format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
-            #I changed the saving mechanism so parallel models would save layers without wrapping them in module
-            #to manually load a model that has already been saved with the regular model.load_model then set
-            #load_module to 1
-            if args.cuda and args.load_module:
-                self.model.module.load_state_dict(checkpoint['state_dict'])
 
-            elif args.cuda and not args.load_module:
-                #if the weights are wrapped in module object we have to clean it
-                if args.clean_module:
-                    state_dict = checkpoint['state_dict']
-                    new_state_dict = OrderedDict()
-                    for k, v in state_dict.items():
-                        name = k[7:]  # remove 'module.' of dataparallel
-                        new_state_dict[name] = v
-                    self.model.load_state_dict(new_state_dict)
-                else:
-                    self.model.load_state_dict(checkpoint['state_dict'])
-            else:
+            # if the weights are wrapped in module object we have to clean it
+            if args.clean_module:
                 self.model.load_state_dict(checkpoint['state_dict'])
+                state_dict = checkpoint['state_dict']
+                new_state_dict = OrderedDict()
+                for k, v in state_dict.items():
+                    name = k[7:]  # remove 'module.' of dataparallel
+                    new_state_dict[name] = v
+                self.model.load_state_dict(new_state_dict)
+
+            else:
+                # self.model.module.load_state_dict(checkpoint['state_dict'])
+                self.model.load_state_dict(checkpoint['state_dict'])
+
+
             if not args.ft:
                 self.optimizer.load_state_dict(checkpoint['optimizer'])
             self.best_pred = checkpoint['best_pred']
@@ -220,7 +223,7 @@ def main():
 
     parser.add_argument('--use-sbd', action='store_true', default=False,
                         help='whether to use SBD dataset (default: True)')
-    parser.add_argument('--load-module', type=int, default=0)
+    parser.add_argument('--load-parallel', type=int, default=0)
     parser.add_argument('--clean-module', type=int, default=0)
     parser.add_argument('--workers', type=int, default=0,
                         metavar='N', help='dataloader threads')
