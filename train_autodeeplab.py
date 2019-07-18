@@ -119,18 +119,20 @@ class Trainer(object):
             image, target = sample['image'], sample['label']
             if self.args.cuda:
                 image, target = image.cuda(), target.cuda()
-            if epoch > self.args.alpha_epoch:
-                search = next(iter(self.train_loader2))
-                image_search, target_search = search['image'], search['label']
-                if self.args.cuda:
-                    image_search, target_search = image_search.cuda (), target_search.cuda ()
-                self.architect.step (image_search, target_search)
             self.scheduler(self.optimizer, i, epoch, self.best_pred)
             self.optimizer.zero_grad()
             output = self.model(image)
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
+
+            if epoch > self.args.alpha_epoch:
+                search = next(iter(self.train_loader2))
+                image_search, target_search = search['image'], search['label']
+                if self.args.cuda:
+                    image_search, target_search = image_search.cuda (), target_search.cuda ()
+                self.architect.step (image_search, target_search)
+
             train_loss += loss.item()
             tbar.set_description('Train loss: %.3f' % (train_loss / (i + 1)))
             #self.writer.add_scalar('train/total_loss_iter', loss.item(), i + num_img_tr * epoch)
@@ -231,6 +233,8 @@ def main():
                         help='base image size')
     parser.add_argument('--crop_size', type=int, default=224,
                         help='crop image size')
+    parser.add_argument('--resize', type=int, default=512,
+                        help='resize image size')
     parser.add_argument('--sync-bn', type=bool, default=None,
                         help='whether to use sync bn (default: auto)')
     parser.add_argument('--freeze-bn', type=bool, default=False,
@@ -254,14 +258,14 @@ def main():
     parser.add_argument('--use_balanced_weights', action='store_true', default=False,
                         help='whether to use balanced weights (default: False)')
     # optimizer params
-    parser.add_argument('--lr', type=float, default=1e-2, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.025, metavar='LR',
                         help='learning rate (default: auto)')
-    parser.add_argument('--arch-lr', type=float, default=1e-3, metavar='LR',
-                        help='architect learning rate (default: auto)')
+    parser.add_argument('--arch-lr', type=float, default=3e-3, metavar='LR',
+                        help='learning rate for alpha and beta in architect searching process')
 
-    parser.add_argument('--lr-scheduler', type=str, default='poly',
+    parser.add_argument('--lr-scheduler', type=str, default='cos',
                         choices=['poly', 'step', 'cos'],
-                        help='lr scheduler mode: (default: poly)')
+                        help='lr scheduler mode')
     parser.add_argument('--momentum', type=float, default=0.9,
                         metavar='M', help='momentum (default: 0.9)')
     parser.add_argument('--weight-decay', type=float, default=3e-4,
@@ -326,7 +330,7 @@ def main():
     if args.lr is None:
         lrs = {
             'coco': 0.1,
-            'cityscapes': 0.01,
+            'cityscapes': 0.025,
             'pascal': 0.007,
         }
         args.lr = lrs[args.dataset.lower()] / (4 * len(args.gpu_ids)) * args.batch_size
