@@ -148,40 +148,18 @@ class FixScaleCrop(object):
         return {'image': img,
                 'label': mask}
 
-# resize to 512*1024
 class FixedResize(object):
-    """change the short edge length to size"""
-    def __init__(self, resize=512):
-        self.size1 = resize  # size= 512
+    def __init__(self, size):
+        self.size = (size, size)  # size: (h, w)
+
     def __call__(self, sample):
         img = sample['image']
         mask = sample['label']
+
         assert img.size == mask.size
 
-        w, h = img.size
-        if w > h:
-            oh = self.size1
-            ow = int(1.0 * w * oh / h)
-        else:
-            ow = self.size1
-            oh = int(1.0 * h * ow / w)
-        img = img.resize((ow,oh), Image.BILINEAR)
-        mask = mask.resize((ow,oh), Image.NEAREST)
-        return {'image': img,
-                'label': mask}
+        img = img.resize(self.size, Image.BILINEAR)
+        mask = mask.resize(self.size, Image.NEAREST)
 
- # random crop 321*321
-class RandomCrop(object):
-    def __init__(self,  crop_size=320):
-        self.crop_size = crop_size
-
-    def __call__(self, sample):
-        img = sample['image']
-        mask = sample['label']
-        w, h = img.size
-        x1 = random.randint(0, w - self.crop_size)
-        y1 = random.randint(0, h - self.crop_size)
-        img = img.crop((x1, y1, x1 + self.crop_size, y1 + self.crop_size))
-        mask = mask.crop((x1, y1, x1 + self.crop_size, y1 + self.crop_size))
         return {'image': img,
                 'label': mask}
