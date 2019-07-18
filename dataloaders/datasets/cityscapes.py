@@ -96,9 +96,10 @@ class CityscapesSegmentation(data.Dataset):
 
     def transform_tr(self, sample):
         composed_transforms = transforms.Compose([
-            tr.RandomHorizontalFlip(),
-            tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size, fill=255),
-            tr.RandomGaussianBlur(),
+            tr.FixedResize(resize=self.args.resize),
+            tr.RandomCrop(crop_size=self.args.crop_size),
+            #tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size, fill=255),
+            #tr.RandomGaussianBlur(),
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
 
@@ -107,7 +108,7 @@ class CityscapesSegmentation(data.Dataset):
     def transform_val(self, sample):
 
         composed_transforms = transforms.Compose([
-            tr.FixScaleCrop(crop_size=self.args.crop_size),
+            tr.FixScaleCrop(crop_size=self.args.crop_size), #TODO:CHECK THIS
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
 
@@ -121,6 +122,7 @@ class CityscapesSegmentation(data.Dataset):
             tr.ToTensor()])
 
         return composed_transforms(sample)
+
 
 if __name__ == '__main__':
     from dataloaders.utils import decode_segmap
