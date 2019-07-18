@@ -7,10 +7,23 @@ from mypath import Path
 from torchvision import transforms
 from dataloaders import custom_transforms as tr
 
+
+
+def twoTrainSeg(args, root=Path.db_root_dir('cityscapes')):
+    images_base = os.path.join(root, 'leftImg8bit', 'train')
+    train_files = [os.path.join(looproot, filename) for looproot, _, filenames in os.walk(images_base)
+     for filename in filenames if filename.endswith('.png')]
+    number_images = len(train_files)
+    permuted_indices_ls = np.random.permutation(number_images)
+    indices_1 = permuted_indices_ls[: int(0.5 * number_images)]
+    indices_2 = permuted_indices_ls[int(0.5 * number_images):]
+    return CityscapesSegmentation(args, split='train', indices_for_split=indices_1), CityscapesSegmentation(args, split='train', indices_for_split=indices_2)
+
+
 class CityscapesSegmentation(data.Dataset):
     NUM_CLASSES = 19
 
-    def __init__(self, args, root=Path.db_root_dir('cityscapes'), split="train"):
+    def __init__(self, args, root=Path.db_root_dir('cityscapes'), split="train",indices_for_split=None):
 
         self.root = root
         self.split = split
@@ -21,6 +34,9 @@ class CityscapesSegmentation(data.Dataset):
         self.annotations_base = os.path.join(self.root, 'gtFine', self.split)
 
         self.files[split] = self.recursive_glob(rootdir=self.images_base, suffix='.png')
+
+        if indices_for_split is not None:
+            self.files[split] = np.array(self.files[split])[indices_for_split].tolist()
 
         self.void_classes = [0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30, -1]
         self.valid_classes = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
