@@ -323,18 +323,12 @@ class AutoDeeplab (nn.Module) :
         aspp_result_16 = upsample (aspp_result_16)
         aspp_result_32 = upsample (aspp_result_32)
 
-         # SKIP ASPP
-#        aspp_result_4 = self.up_sample (self.level_4[-1])
-#        aspp_result_8 = self.up_sample (self.level_8[-1])
-#        aspp_result_16 = self.up_sample (self.level_16[-1])
-#        aspp_result_32 = self.up_sample (self.level_32[-1])
-
 
         concate_feature_map = torch.cat ([aspp_result_4, aspp_result_8, aspp_result_16, aspp_result_32], 1)
+        sum_feature_map = aspp_result_4 + aspp_result_8 + aspp_result_16 + aspp_result_32
+        #out = self.final_conv (concate_feature_map)
 
-        out = self.final_conv (concate_feature_map)
-
-        return out
+        return sum_feature_map
 
     def _initialize_alphas(self):
         k = sum(1 for i in range(self._step) for n in range(2+i))
