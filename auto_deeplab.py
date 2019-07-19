@@ -308,8 +308,7 @@ class AutoDeeplab (nn.Module) :
                 self.level_8.append (level8_new)
                 self.level_16.append (level16_new)
                 self.level_32.append (level32_new)
-        # print (self.level_4[-1].size(),self.level_8[-1].size(),self.level_16[-1].size(),self.level_32[-1].size())
-        # concate_feature_map = torch.cat ([self.level_4[-1], self.level_8[-1],self.level_16[-1], self.level_32[-1]], 1)
+
         aspp_result_4 = self.aspp_4 (self.level_4[-1])
         aspp_result_8 = self.aspp_8 (self.level_8[-1])
         aspp_result_16 = self.aspp_16 (self.level_16[-1])
@@ -321,7 +320,6 @@ class AutoDeeplab (nn.Module) :
         aspp_result_32 = upsample (aspp_result_32)
 
 
-        #concate_feature_map = torch.cat ([aspp_result_4, aspp_result_8, aspp_result_16, aspp_result_32], 1)
         sum_feature_map = aspp_result_4 + aspp_result_8 + aspp_result_16 + aspp_result_32
 
 
