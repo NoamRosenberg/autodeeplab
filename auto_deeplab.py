@@ -141,20 +141,17 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell4_1]
                 self.cells += [cell4_2]
         self.aspp_4 = nn.Sequential (
-            ASPP (self._num_channel, 256, 24, 24)
+            ASPP (self._num_channel, self._num_classes, 24, 24)
         )
         self.aspp_8 = nn.Sequential (
-            ASPP (self._num_channel * 2, 256, 12, 12)
+            ASPP (self._num_channel * 2, self._num_classes, 12, 12)
         )
         self.aspp_16 = nn.Sequential (
-            ASPP (self._num_channel * 4, 256, 6, 6)
+            ASPP (self._num_channel * 4, self._num_classes, 6, 6)
         )
         self.aspp_32 = nn.Sequential (
-            ASPP (self._num_channel * 8, 256, 3, 3)
+            ASPP (self._num_channel * 8, self._num_classes, 3, 3)
         )
-        self.final_conv = nn.Conv2d (1024, self._num_classes, 1, stride= 1, padding= 0)
-        #self.final_conv = nn.Conv2d(300, num_classes, 1, stride=1, padding=0)
-        #self.up_sample = nn.Upsample(size=[224,224], mode='bilinear', align_corners=True)
 
 
 
@@ -324,9 +321,9 @@ class AutoDeeplab (nn.Module) :
         aspp_result_32 = upsample (aspp_result_32)
 
 
-        concate_feature_map = torch.cat ([aspp_result_4, aspp_result_8, aspp_result_16, aspp_result_32], 1)
+        #concate_feature_map = torch.cat ([aspp_result_4, aspp_result_8, aspp_result_16, aspp_result_32], 1)
         sum_feature_map = aspp_result_4 + aspp_result_8 + aspp_result_16 + aspp_result_32
-        #out = self.final_conv (concate_feature_map)
+
 
         return sum_feature_map
 
