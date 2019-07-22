@@ -229,9 +229,9 @@ def main():
     parser.add_argument('--clean-module', type=int, default=0)
     parser.add_argument('--workers', type=int, default=0,
                         metavar='N', help='dataloader threads')
-    parser.add_argument('--base_size', type=int, default=224,
+    parser.add_argument('--base_size', type=int, default=320,
                         help='base image size')
-    parser.add_argument('--crop_size', type=int, default=224,
+    parser.add_argument('--crop_size', type=int, default=320,
                         help='crop image size')
     parser.add_argument('--resize', type=int, default=512,
                         help='resize image size')
@@ -327,13 +327,7 @@ def main():
     if args.test_batch_size is None:
         args.test_batch_size = args.batch_size
 
-    if args.lr is None:
-        lrs = {
-            'coco': 0.1,
-            'cityscapes': 0.025,
-            'pascal': 0.007,
-        }
-        args.lr = lrs[args.dataset.lower()] / (4 * len(args.gpu_ids)) * args.batch_size
+    #args.lr = args.lr / (4 * len(args.gpu_ids)) * args.batch_size
 
 
     if args.checkname is None:
