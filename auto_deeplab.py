@@ -8,17 +8,18 @@ import torch.nn.functional as F
 from operations import *
 
 class AutoDeeplab (nn.Module) :
-    def __init__(self, num_classes, num_layers, criterion, num_channel = 20, multiplier = 5, step = 5, cell=cell_level_search.Cell):
+    def __init__(self, num_classes, num_layers, criterion, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=cell_level_search.Cell):
         super(AutoDeeplab, self).__init__()
 
         self.cells = nn.ModuleList()
         self._num_layers = num_layers
         self._num_classes = num_classes
         self._step = step
-        self._multiplier = multiplier
-        self._num_channel = num_channel
+        self._block_multiplier = block_multiplier
+        self._filter_multiplier = filter_multiplier
         self._criterion = criterion
         self._initialize_alphas_betas ()
+        C_initial = 128
         self.stem0 = nn.Sequential(
             nn.Conv2d(3, 64, 3, stride=2, padding=1),
             nn.BatchNorm2d(64),
@@ -30,29 +31,29 @@ class AutoDeeplab (nn.Module) :
             nn.ReLU ()
         )
         self.stem2 = nn.Sequential(
-            nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(64, C_initial, 3, stride=2, padding=1),
+            nn.BatchNorm2d(C_initial),
             nn.ReLU ()
         )
 
-        C_prev_prev = 64
-        C_prev = 128
+        #C_prev_prev = 64
+
         for i in range (self._num_layers) :
-        # def __init__(self, steps, multiplier, C_prev_prev, C_prev, C, rate) : rate = 0 , 1, 2  reduce rate
+        # def __init__(self, steps, multiplier, C_prev_prev, C_initial, C, rate) : rate = 0 , 1, 2  reduce rate
 
             if i == 0 :
-                cell1 = cell (self._step, self._multiplier, -1, C_prev, self._num_channel, 1)
-                cell2 = cell (self._step, self._multiplier, -1, C_prev, self._num_channel * 2, 2)
+                cell1 = cell (self._step, self._block_multiplier, -1, C_initial, self._filter_multiplier, 1)
+                cell2 = cell (self._step, self._block_multiplier, -1, C_initial, self._filter_multiplier * 2, 2)
                 self.cells += [cell1]
                 self.cells += [cell2]
             elif i == 1 :
-                cell1_1 = cell (self._step, self._multiplier, C_prev, self._num_channel, self._num_channel, 1)
-                cell1_2 = cell (self._step, self._multiplier, C_prev, self._num_channel * 2, self._num_channel, 0)
+                cell1_1 = cell (self._step, self._block_multiplier, C_initial, self._filter_multiplier, self._filter_multiplier, 1)
+                cell1_2 = cell (self._step, self._block_multiplier, C_initial, self._filter_multiplier * 2, self._filter_multiplier, 0)
 
-                cell2_1 = cell (self._step, self._multiplier, -1, self._num_channel, self._num_channel * 2, 2)
-                cell2_2 = cell (self._step, self._multiplier, -1, self._num_channel * 2, self._num_channel * 2, 1)
+                cell2_1 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier, self._filter_multiplier * 2, 2)
+                cell2_2 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier * 2, self._filter_multiplier * 2, 1)
 
-                cell3 = cell (self._step, self._multiplier, -1, self._num_channel * 2, self._num_channel * 4, 2)
+                cell3 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier * 2, self._filter_multiplier * 4, 2)
 
                 self.cells += [cell1_1]
                 self.cells += [cell1_2]
@@ -61,18 +62,18 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell3]
 
             elif i == 2 :
-                cell1_1 = cell (self._step, self._multiplier, self._num_channel, self._num_channel, self._num_channel, 1)
-                cell1_2 = cell (self._step, self._multiplier, self._num_channel, self._num_channel * 2, self._num_channel, 0)
+                cell1_1 = cell (self._step, self._block_multiplier, self._filter_multiplier, self._filter_multiplier, self._filter_multiplier, 1)
+                cell1_2 = cell (self._step, self._block_multiplier, self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier, 0)
 
-                cell2_1 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel, self._num_channel * 2, 2)
-                cell2_2 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel * 2, self._num_channel * 2, 1)
-                cell2_3 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel * 4, self._num_channel * 2, 0)
+                cell2_1 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier, self._filter_multiplier * 2, 2)
+                cell2_2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 2, self._filter_multiplier * 2, 1)
+                cell2_3 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4, self._filter_multiplier * 2, 0)
 
 
-                cell3_1 = cell (self._step, self._multiplier, -1, self._num_channel * 2, self._num_channel * 4, 2)
-                cell3_2 = cell (self._step, self._multiplier, -1, self._num_channel * 4, self._num_channel * 4, 1)
+                cell3_1 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier * 2, self._filter_multiplier * 4, 2)
+                cell3_2 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier * 4, self._filter_multiplier * 4, 1)
 
-                cell4 = cell (self._step, self._multiplier, -1, self._num_channel * 4, self._num_channel * 8, 2)
+                cell4 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier * 4, self._filter_multiplier * 8, 2)
 
                 self.cells += [cell1_1]
                 self.cells += [cell1_2]
@@ -86,21 +87,21 @@ class AutoDeeplab (nn.Module) :
 
 
             elif i == 3 :
-                cell1_1 = cell (self._step, self._multiplier, self._num_channel, self._num_channel, self._num_channel, 1)
-                cell1_2 = cell (self._step, self._multiplier, self._num_channel, self._num_channel * 2, self._num_channel, 0)
+                cell1_1 = cell (self._step, self._block_multiplier, self._filter_multiplier, self._filter_multiplier, self._filter_multiplier, 1)
+                cell1_2 = cell (self._step, self._block_multiplier, self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier, 0)
 
-                cell2_1 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel, self._num_channel * 2, 2)
-                cell2_2 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel * 2, self._num_channel * 2, 1)
-                cell2_3 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel * 4, self._num_channel * 2, 0)
-
-
-                cell3_1 = cell (self._step, self._multiplier, self._num_channel * 4, self._num_channel * 2, self._num_channel * 4, 2)
-                cell3_2 = cell (self._step, self._multiplier, self._num_channel * 4, self._num_channel * 4, self._num_channel * 4, 1)
-                cell3_3 = cell (self._step, self._multiplier, self._num_channel * 4, self._num_channel * 8, self._num_channel * 4, 0)
+                cell2_1 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier, self._filter_multiplier * 2, 2)
+                cell2_2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 2, self._filter_multiplier * 2, 1)
+                cell2_3 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4, self._filter_multiplier * 2, 0)
 
 
-                cell4_1 = cell (self._step, self._multiplier, -1, self._num_channel * 4, self._num_channel * 8, 2)
-                cell4_2 = cell (self._step, self._multiplier, -1, self._num_channel * 8, self._num_channel * 8, 1)
+                cell3_1 = cell (self._step, self._block_multiplier, self._filter_multiplier * 4, self._filter_multiplier * 2, self._filter_multiplier * 4, 2)
+                cell3_2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 4, self._filter_multiplier * 4, self._filter_multiplier * 4, 1)
+                cell3_3 = cell (self._step, self._block_multiplier, self._filter_multiplier * 4, self._filter_multiplier * 8, self._filter_multiplier * 4, 0)
+
+
+                cell4_1 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier * 4, self._filter_multiplier * 8, 2)
+                cell4_2 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier * 8, self._filter_multiplier * 8, 1)
 
                 self.cells += [cell1_1]
                 self.cells += [cell1_2]
@@ -114,21 +115,21 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell4_2]
 
             else :
-                cell1_1 = cell (self._step, self._multiplier, self._num_channel, self._num_channel, self._num_channel, 1)
-                cell1_2 = cell (self._step, self._multiplier, self._num_channel, self._num_channel * 2, self._num_channel, 0)
+                cell1_1 = cell (self._step, self._block_multiplier, self._filter_multiplier, self._filter_multiplier, self._filter_multiplier, 1)
+                cell1_2 = cell (self._step, self._block_multiplier, self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier, 0)
 
-                cell2_1 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel, self._num_channel * 2, 2)
-                cell2_2 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel * 2, self._num_channel * 2, 1)
-                cell2_3 = cell (self._step, self._multiplier, self._num_channel * 2, self._num_channel * 4, self._num_channel * 2, 0)
-
-
-                cell3_1 = cell (self._step, self._multiplier, self._num_channel * 4, self._num_channel * 2, self._num_channel * 4, 2)
-                cell3_2 = cell (self._step, self._multiplier, self._num_channel * 4, self._num_channel * 4, self._num_channel * 4, 1)
-                cell3_3 = cell (self._step, self._multiplier, self._num_channel * 4, self._num_channel * 8, self._num_channel * 4, 0)
+                cell2_1 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier, self._filter_multiplier * 2, 2)
+                cell2_2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 2, self._filter_multiplier * 2, 1)
+                cell2_3 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4, self._filter_multiplier * 2, 0)
 
 
-                cell4_1 = cell (self._step, self._multiplier, self._num_channel * 8, self._num_channel * 4, self._num_channel * 8, 2)
-                cell4_2 = cell (self._step, self._multiplier, self._num_channel * 8, self._num_channel * 8, self._num_channel * 8, 1)
+                cell3_1 = cell (self._step, self._block_multiplier, self._filter_multiplier * 4, self._filter_multiplier * 2, self._filter_multiplier * 4, 2)
+                cell3_2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 4, self._filter_multiplier * 4, self._filter_multiplier * 4, 1)
+                cell3_3 = cell (self._step, self._block_multiplier, self._filter_multiplier * 4, self._filter_multiplier * 8, self._filter_multiplier * 4, 0)
+
+
+                cell4_1 = cell (self._step, self._block_multiplier, self._filter_multiplier * 8, self._filter_multiplier * 4, self._filter_multiplier * 8, 2)
+                cell4_2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 8, self._filter_multiplier * 8, self._filter_multiplier * 8, 1)
 
                 self.cells += [cell1_1]
                 self.cells += [cell1_2]
@@ -141,16 +142,16 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell4_1]
                 self.cells += [cell4_2]
         self.aspp_4 = nn.Sequential (
-            ASPP (self._num_channel, self._num_classes, 24, 24)
+            ASPP (self._filter_multiplier, self._num_classes, 24, 24)
         )
         self.aspp_8 = nn.Sequential (
-            ASPP (self._num_channel * 2, self._num_classes, 12, 12)
+            ASPP (self._filter_multiplier * 2, self._num_classes, 12, 12)
         )
         self.aspp_16 = nn.Sequential (
-            ASPP (self._num_channel * 4, self._num_classes, 6, 6)
+            ASPP (self._filter_multiplier * 4, self._num_classes, 6, 6)
         )
         self.aspp_32 = nn.Sequential (
-            ASPP (self._num_channel * 8, self._num_classes, 3, 3)
+            ASPP (self._filter_multiplier * 8, self._num_classes, 3, 3)
         )
 
 
@@ -556,7 +557,7 @@ class AutoDeeplab (nn.Module) :
             return gene
 
         gene_cell = _parse(F.softmax(self.alphas_cell, dim=-1).data.cpu().numpy())
-        concat = range(2+self._step-self._multiplier, self._step+2)
+        concat = range(2 + self._step - self._block_multiplier, self._step + 2)
         genotype = Genotype(
             cell=gene_cell, cell_concat=concat
         )
