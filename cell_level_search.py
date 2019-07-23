@@ -24,35 +24,37 @@ class MixedOp (nn.Module):
 
 class Cell(nn.Module):
 
-    def __init__(self, steps, multiplier, C_prev_prev, C_prev, C, rate):
+    def __init__(self, steps, block_multiplier, C_prev_prev, C_prev, filter_multiplier, rate):
 
         super(Cell, self).__init__()
-        self.C_out = C
+        self.C_in = block_multiplier * filter_multiplier * block_multiplier
+        self.C_out = filter_multiplier * block_multiplier
         if C_prev_prev != -1 :
-            self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
+            self.preprocess0 = ReLUConvBN(C_prev_prev, self.C_out, 1, 1, 0, affine=False)
 
         if rate == 2 :
-            self.preprocess1 = FactorizedReduce (C_prev, C, affine= False)
+            self.preprocess1 = FactorizedReduce (C_prev, self.C_out, affine= False)
         elif rate == 0 :
-            self.preprocess1 = FactorizedIncrease (C_prev, C)
+            self.preprocess1 = FactorizedIncrease (C_prev, self.C_out)
         else :
-            self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
+            self.preprocess1 = ReLUConvBN(C_prev, self.C_out, 1, 1, 0, affine=False)
         self._steps = steps
-        self._multiplier = multiplier
+        self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
         if C_prev_prev != -1 :
             for i in range(self._steps):
                 for j in range(2+i):
                     stride = 1
-                    op = MixedOp(C, stride)
+                    op = MixedOp(self.C_out, stride)
                     self._ops.append(op)
         else :
             for i in range(self._steps):
                 for j in range(1+i):
                     stride = 1
-                    op = MixedOp(C, stride)
+                    op = MixedOp(self.C_out, stride)
                     self._ops.append(op)
-        self.ReLUConvBN = ReLUConvBN (self._multiplier * self.C_out, self.C_out, 1, 1, 0)
+
+        self.ReLUConvBN = ReLUConvBN (self.C_in, self.C_out, 1, 1, 0)
 
 
     def forward(self, s0, s1, weights):
@@ -75,7 +77,7 @@ class Cell(nn.Module):
             states.append(s)
 
 
-        concat_feature = torch.cat(states[-self._multiplier:], dim=1)
+        concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
         return  self.ReLUConvBN (concat_feature)
 
 
