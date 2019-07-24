@@ -23,8 +23,13 @@ Currently this repo contains a pytorch implementation for AutoDeeplab.
 
 ## Training
 
+###Start training
 ```
-CUDA_VISIBLE_DEVICES=7 python train_autodeeplab.py --dataset cityscapes --batch-size 2 --checkname alpha5epoch --resume /AutoDeeplabpath/checkpoint.pth.tar
+CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes
+```
+###Resume training
+```
+CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
 
 ## References
