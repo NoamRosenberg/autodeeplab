@@ -142,16 +142,16 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell4_1]
                 self.cells += [cell4_2]
         self.aspp_4 = nn.Sequential (
-            ASPP (self._filter_multiplier, self._num_classes, 24, 24)
+            ASPP (self._block_multiplier * self._filter_multiplier, self._num_classes, 24, 24)
         )
         self.aspp_8 = nn.Sequential (
-            ASPP (self._filter_multiplier * 2, self._num_classes, 12, 12)
+            ASPP (self._block_multiplier * self._filter_multiplier * 2, self._num_classes, 12, 12)
         )
         self.aspp_16 = nn.Sequential (
-            ASPP (self._filter_multiplier * 4, self._num_classes, 6, 6)
+            ASPP (self._block_multiplier * self._filter_multiplier * 4, self._num_classes, 6, 6)
         )
         self.aspp_32 = nn.Sequential (
-            ASPP (self._filter_multiplier * 8, self._num_classes, 3, 3)
+            ASPP (self._block_multiplier * self._filter_multiplier * 8, self._num_classes, 3, 3)
         )
 
 
