@@ -27,11 +27,11 @@ class Cell(nn.Module):
     def __init__(self, steps, block_multiplier, prev_prev_fmultiplier, prev_fmultiplier, filter_multiplier, rate):
 
         super(Cell, self).__init__()
-        self.C_prev_prev = prev_prev_fmultiplier * block_multiplier
-        self.C_prev = prev_fmultiplier * block_multiplier
+        self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
+        self.C_prev = int(prev_fmultiplier * block_multiplier)
         self.C_in = block_multiplier * filter_multiplier * block_multiplier
         self.C_out = filter_multiplier * block_multiplier
-        if C_prev_prev != -1 :
+        if prev_prev_fmultiplier != -1 :
             self.preprocess0 = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
 
         if rate == 2 :
