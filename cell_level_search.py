@@ -24,24 +24,26 @@ class MixedOp (nn.Module):
 
 class Cell(nn.Module):
 
-    def __init__(self, steps, block_multiplier, C_prev_prev, C_prev, filter_multiplier, rate):
+    def __init__(self, steps, block_multiplier, prev_prev_fmultiplier, prev_fmultiplier, filter_multiplier, rate):
 
         super(Cell, self).__init__()
+        self.C_prev_prev = prev_prev_fmultiplier * block_multiplier
+        self.C_prev = prev_fmultiplier * block_multiplier
         self.C_in = block_multiplier * filter_multiplier * block_multiplier
         self.C_out = filter_multiplier * block_multiplier
         if C_prev_prev != -1 :
-            self.preprocess0 = ReLUConvBN(C_prev_prev, self.C_out, 1, 1, 0, affine=False)
+            self.preprocess0 = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
 
         if rate == 2 :
-            self.preprocess1 = FactorizedReduce (C_prev, self.C_out, affine= False)
+            self.preprocess1 = FactorizedReduce (self.C_prev, self.C_out, affine= False)
         elif rate == 0 :
-            self.preprocess1 = FactorizedIncrease (C_prev, self.C_out)
+            self.preprocess1 = FactorizedIncrease (self.C_prev, self.C_out)
         else :
-            self.preprocess1 = ReLUConvBN(C_prev, self.C_out, 1, 1, 0, affine=False)
+            self.preprocess1 = ReLUConvBN(self.C_prev, self.C_out, 1, 1, 0, affine=False)
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
-        if C_prev_prev != -1 :
+        if prev_prev_fmultiplier != -1 :
             for i in range(self._steps):
                 for j in range(2+i):
                     stride = 1

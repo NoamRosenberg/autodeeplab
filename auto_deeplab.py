@@ -37,18 +37,18 @@ class AutoDeeplab (nn.Module) :
         )
 
         #C_prev_prev = 64
-
+        intitial_fm = C_initial / self._block_multiplier
         for i in range (self._num_layers) :
         # def __init__(self, steps, multiplier, C_prev_prev, C_initial, C, rate) : rate = 0 , 1, 2  reduce rate
 
             if i == 0 :
-                cell1 = cell (self._step, self._block_multiplier, -1, C_initial, self._filter_multiplier, 1)
-                cell2 = cell (self._step, self._block_multiplier, -1, C_initial, self._filter_multiplier * 2, 2)
+                cell1 = cell (self._step, self._block_multiplier, -1, intitial_fm, self._filter_multiplier, 1)
+                cell2 = cell (self._step, self._block_multiplier, -1, intitial_fm, self._filter_multiplier * 2, 2)
                 self.cells += [cell1]
                 self.cells += [cell2]
             elif i == 1 :
-                cell1_1 = cell (self._step, self._block_multiplier, C_initial, self._filter_multiplier, self._filter_multiplier, 1)
-                cell1_2 = cell (self._step, self._block_multiplier, C_initial, self._filter_multiplier * 2, self._filter_multiplier, 0)
+                cell1_1 = cell (self._step, self._block_multiplier, intitial_fm, self._filter_multiplier, self._filter_multiplier, 1)
+                cell1_2 = cell (self._step, self._block_multiplier, intitial_fm, self._filter_multiplier * 2, self._filter_multiplier, 0)
 
                 cell2_1 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier, self._filter_multiplier * 2, 2)
                 cell2_2 = cell (self._step, self._block_multiplier, -1, self._filter_multiplier * 2, self._filter_multiplier * 2, 1)
