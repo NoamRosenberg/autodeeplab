@@ -58,7 +58,7 @@ class Trainer(object):
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
-                                      args.epochs, len(self.train_loaderA))
+                                      args.epochs, len(self.train_loaderA), min_lr=args.min_lr)
 
         self.architect = Architect (self.model, args)
 
@@ -261,6 +261,7 @@ def main():
     # optimizer params
     parser.add_argument('--lr', type=float, default=0.025, metavar='LR',
                         help='learning rate (default: auto)')
+    parser.add_argument('--min_lr', type=float, default=0.001)
     parser.add_argument('--arch-lr', type=float, default=3e-3, metavar='LR',
                         help='learning rate for alpha and beta in architect searching process')
 
