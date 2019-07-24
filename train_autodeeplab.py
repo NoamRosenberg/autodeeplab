@@ -250,7 +250,7 @@ def main():
     parser.add_argument('--filter_multiplier', type=int, default=8)
     parser.add_argument('--alpha_epoch', type=int, default=5,
                         metavar='N', help='epoch to start training alphas')
-    parser.add_argument('--batch-size', type=int, default=1,
+    parser.add_argument('--batch-size', type=int, default=2,
                         metavar='N', help='input batch size for \
                                 training (default: auto)')
     parser.add_argument('--test-batch-size', type=int, default=None,
