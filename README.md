@@ -32,11 +32,11 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 
 ## Training
 
-####Start training
+**Start training**
 ```
 CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes
 ```
-####Resume training
+**Resume training**
 ```
 CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
