@@ -7,6 +7,8 @@ Following the popular trend of modern CNN architectures having a two level hiera
 ![network and cell level search space](./images/networkandcell.png)
 
 
+
+
 Auto-Deeplab acheives a better performance while minimizing the size of the final model.
 ![model results](./images/results.png)
 
