@@ -3,6 +3,10 @@ This is an open-source project of AutoML for object detection & segmentation as 
 
 Currently this repo contains a pytorch implementation for AutoDeeplab.
 
+![model results](./images/results.png?raw=true "Title")
+
+![network and cell level search space](./images/networkandcell.png?raw=true "Title")
+
 ## Requirements
 
 * Pytorch version 1.1
