@@ -38,9 +38,15 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 ```
 CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes
 ```
+
 **Resume training**
 ```
 CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
+```
+
+**Multi-GPU training**
+```
+CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
 ```
 
 ## References
