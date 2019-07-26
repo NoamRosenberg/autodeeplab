@@ -96,8 +96,10 @@ class Trainer(object):
                 self.model.load_state_dict(new_state_dict)
 
             else:
-                # self.model.module.load_state_dict(checkpoint['state_dict'])
-                self.model.load_state_dict(checkpoint['state_dict'])
+                if (torch.cuda.device_count() > 1 or args.load_parallel):
+                    self.model.module.load_state_dict(checkpoint['state_dict'])
+                else:
+                    self.model.load_state_dict(checkpoint['state_dict'])
 
 
             if not args.ft:
