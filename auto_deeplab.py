@@ -170,34 +170,40 @@ class AutoDeeplab (nn.Module) :
         count = 0
         img_device = torch.device('cuda', x.get_device())
         self.alphas_cell = self.alphas_cell.to(device=img_device)
-        self.betas_network = self.betas_network.to(device=img_device)
+        self.bottom_betas = self.bottom_betas.to(device=img_device)
+        self.betas8 = self.betas8.to(device=img_device)
+        self.betas16 = self.betas16.to(device=img_device)
+        self.top_betas = self.top_betas.to(device=img_device)
         weight_cells = F.softmax(self.alphas_cell, dim=-1)
-        weight_network = F.softmax (self.betas_network, dim = -1)
-        for layer in range (self._num_layers) :
+        normalized_bottom_betas = F.softmax(self.bottom_betas, dim=-1)
+        normalized_betas8 = F.softmax (self.betas8, dim = -1)
+        normalized_betas16 = F.softmax(self.betas16, dim=-1)
+        normalized_top_betas = F.softmax(self.top_betas, dim=-1)
+        for layer in range (self._num_layers - 1) :
 
             if layer == 0 :
                 level4_new = self.cells[count] (None, self.level_4[-1], weight_cells)
                 count += 1
                 level8_new = self.cells[count] (None, self.level_4[-1], weight_cells)
                 count += 1
-                self.level_4.append (level4_new * self.betas_network[layer][0][0])
-                self.level_8.append (level8_new * self.betas_network[layer][0][1])
+                self.level_4.append (level4_new)
+                self.level_8.append (level8_new)
                 # print ((self.level_4[-2]).size (),  (self.level_4[-1]).size())
             elif layer == 1 :
                 level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], weight_cells)
                 count += 1
                 level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], weight_cells)
                 count += 1
-                level4_new = self.betas_network[layer][0][0] * level4_new_1 + self.betas_network[layer][0][1] * level4_new_2
+                level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
                 level8_new_1 = self.cells[count] (None, self.level_4[-1], weight_cells)
                 count += 1
                 level8_new_2 = self.cells[count] (None, self.level_8[-1], weight_cells)
                 count += 1
-                level8_new = self.betas_network[layer][1][0] * level8_new_1 + self.betas_network[layer][1][1] * level8_new_2
+                level8_new = normalized_top_betas[layer][0] * level8_new_1 + normalized_top_betas[layer][1] * level8_new_2
 
                 level16_new = self.cells[count] (None, self.level_8[-1], weight_cells)
-                level16_new = level16_new * self.betas_network[layer][1][2]
+                level16_new = level16_new
                 count += 1
 
 
@@ -210,7 +216,7 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], weight_cells)
                 count += 1
-                level4_new = self.betas_network[layer][0][0] * level4_new_1 + self.betas_network[layer][0][1] * level4_new_2
+                level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
                 level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], weight_cells)
                 count += 1
@@ -219,17 +225,17 @@ class AutoDeeplab (nn.Module) :
                 # print (self.level_8[-1].size(),self.level_16[-1].size())
                 level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], weight_cells)
                 count += 1
-                level8_new = self.betas_network[layer][1][0] * level8_new_1 + self.betas_network[layer][1][1] * level8_new_2 + self.betas_network[layer][1][2] * level8_new_3
+                level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
 
                 level16_new_1 = self.cells[count] (None, self.level_8[-1], weight_cells)
                 count += 1
                 level16_new_2 = self.cells[count] (None, self.level_16[-1], weight_cells)
                 count += 1
-                level16_new = self.betas_network[layer][2][0] * level16_new_1 + self.betas_network[layer][2][1] * level16_new_2
+                level16_new = normalized_top_betas[layer][0] * level16_new_1 + normalized_top_betas[layer][1] * level16_new_2
 
 
                 level32_new = self.cells[count] (None, self.level_16[-1], weight_cells)
-                level32_new = level32_new * self.betas_network[layer][2][2]
+                level32_new = level32_new
                 count += 1
 
                 self.level_4.append (level4_new)
@@ -242,7 +248,7 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], weight_cells)
                 count += 1
-                level4_new = self.betas_network[layer][0][0] * level4_new_1 + self.betas_network[layer][0][1] * level4_new_2
+                level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
                 level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], weight_cells)
                 count += 1
@@ -250,7 +256,7 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], weight_cells)
                 count += 1
-                level8_new = self.betas_network[layer][1][0] * level8_new_1 + self.betas_network[layer][1][1] * level8_new_2 + self.betas_network[layer][1][2] * level8_new_3
+                level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
 
                 level16_new_1 = self.cells[count] (self.level_16[-2], self.level_8[-1], weight_cells)
                 count += 1
@@ -258,14 +264,14 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 level16_new_3 = self.cells[count] (self.level_16[-2], self.level_32[-1], weight_cells)
                 count += 1
-                level16_new = self.betas_network[layer][2][0] * level16_new_1 + self.betas_network[layer][2][1] * level16_new_2 + self.betas_network[layer][2][2] * level16_new_3
+                level16_new = normalized_betas16[layer - 2][0] * level16_new_1 + normalized_betas16[layer - 2][1] * level16_new_2 + normalized_betas16[layer - 2][2] * level16_new_3
 
 
                 level32_new_1 = self.cells[count] (None, self.level_16[-1], weight_cells)
                 count += 1
                 level32_new_2 = self.cells[count] (None, self.level_32[-1], weight_cells)
                 count += 1
-                level32_new = self.betas_network[layer][3][0] * level32_new_1 + self.betas_network[layer][3][1] * level32_new_2
+                level32_new = normalized_top_betas[layer][0] * level32_new_1 + normalized_top_betas[layer][1] * level32_new_2
 
 
                 self.level_4.append (level4_new)
@@ -279,7 +285,7 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], weight_cells)
                 count += 1
-                level4_new = self.betas_network[layer][0][0] * level4_new_1 + self.betas_network[layer][0][1] * level4_new_2
+                level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
                 level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], weight_cells)
                 count += 1
@@ -287,7 +293,7 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], weight_cells)
                 count += 1
-                level8_new = self.betas_network[layer][1][0] * level8_new_1 + self.betas_network[layer][1][1] * level8_new_2 + self.betas_network[layer][1][2] * level8_new_3
+                level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
 
                 level16_new_1 = self.cells[count] (self.level_16[-2], self.level_8[-1], weight_cells)
                 count += 1
@@ -295,14 +301,14 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 level16_new_3 = self.cells[count] (self.level_16[-2], self.level_32[-1], weight_cells)
                 count += 1
-                level16_new = self.betas_network[layer][2][0] * level16_new_1 + self.betas_network[layer][2][1] * level16_new_2 + self.betas_network[layer][2][2] * level16_new_3
+                level16_new = normalized_betas16[layer - 2][0] * level16_new_1 + normalized_betas16[layer - 2][1] * level16_new_2 + normalized_betas16[layer - 2][2] * level16_new_3
 
 
                 level32_new_1 = self.cells[count] (self.level_32[-2], self.level_16[-1], weight_cells)
                 count += 1
                 level32_new_2 = self.cells[count] (self.level_32[-2], self.level_32[-1], weight_cells)
                 count += 1
-                level32_new = self.betas_network[layer][3][0] * level32_new_1 + self.betas_network[layer][3][1] * level32_new_2
+                level32_new = normalized_top_betas[layer][0] * level32_new_1 + normalized_top_betas[layer][1] * level32_new_2
 
 
                 self.level_4.append (level4_new)
@@ -330,11 +336,17 @@ class AutoDeeplab (nn.Module) :
         k = sum(1 for i in range(self._step) for n in range(2+i))
         num_ops = len(PRIMITIVES)
         self.alphas_cell = torch.tensor (1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self.betas_network = torch.tensor (1e-3 * torch.randn(self._num_layers, 4, 3).cuda(), requires_grad=True)
+        self.bottom_betas = torch.tensor (1e-3 * torch.randn(self._num_layers - 1, 2).cuda(), requires_grad=True)
+        self.betas8 = torch.tensor (1e-3 * torch.randn(self._num_layers - 2, 3).cuda(), requires_grad=True)
+        self.betas16 = torch.tensor(1e-3 * torch.randn(self._num_layers - 3, 3).cuda(), requires_grad=True)
+        self.top_betas = torch.tensor (1e-3 * torch.randn(self._num_layers - 1, 2).cuda(), requires_grad=True)
 
         self._arch_parameters = [
             self.alphas_cell,
-            self.betas_network,
+            self.bottom_betas,
+            self.betas8,
+            self.betas16,
+            self.top_betas,
         ]
 
     def decode_network (self) :
@@ -524,7 +536,7 @@ class AutoDeeplab (nn.Module) :
                     _parse (weight_network, layer + 1, curr_value, curr_result, 3)
                     curr_value = curr_value / weight_network[layer][num][1]
                     curr_result.pop ()
-        network_weight = F.softmax(self.betas_network, dim=-1) * 5
+        network_weight = F.softmax(self.last_betas_network, dim=-1) * 5
         network_weight = network_weight.data.cpu().numpy()
         _parse (network_weight, 0, 1, [],0)
         print (max_prop)
