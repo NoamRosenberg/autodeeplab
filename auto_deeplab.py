@@ -188,7 +188,7 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 self.level_4.append (level4_new)
                 self.level_8.append (level8_new)
-                # print ((self.level_4[-2]).size (),  (self.level_4[-1]).size())
+
             elif layer == 1 :
                 level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], weight_cells)
                 count += 1
@@ -222,7 +222,7 @@ class AutoDeeplab (nn.Module) :
                 count += 1
                 level8_new_2 = self.cells[count] (self.level_8[-2], self.level_8[-1], weight_cells)
                 count += 1
-                # print (self.level_8[-1].size(),self.level_16[-1].size())
+
                 level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], weight_cells)
                 count += 1
                 level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
