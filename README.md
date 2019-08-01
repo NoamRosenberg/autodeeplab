@@ -3,6 +3,8 @@ This is an open-source project of AutoML for object detection & segmentation as 
 
 Currently this repo contains a pytorch implementation for [Auto-Deeplab](https://arxiv.org/abs/1901.02985). 
 
+Since I currently don't have big enough GPUs, a smaller model is now currently undergoing testing, i.e. image input size of 224 instead of 321, and a filter_multiplier of 4 instead of 8. 
+If anyone can donate any gpu resources, or has the resources to test this code according to the hyper-parameters mentioned in the paper, I would greatly appreciate it.
 
 Following the popular trend of modern CNN architectures having a two level hierarchy. Auto-Deeplab forms a dual level search space, searching for optimal network and cell architecture.
 ![network and cell level search space](./images/networkandcell.png)
