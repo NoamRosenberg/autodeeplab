@@ -3,17 +3,12 @@ import torch
 import torch.nn.functional as F
 
 class ViterbiDecoder(object):
-    def __init__(self):
-        self._num_layers = 12
-        self.bottom_betas = torch.tensor(1e-3 * torch.randn(self._num_layers - 1, 2).cuda(), requires_grad=True)
-        self.betas8 = torch.tensor(1e-3 * torch.randn(self._num_layers - 2, 3).cuda(), requires_grad=True)
-        self.betas16 = torch.tensor(1e-3 * torch.randn(self._num_layers - 3, 3).cuda(), requires_grad=True)
-        self.top_betas = torch.tensor(1e-3 * torch.randn(self._num_layers - 1, 2).cuda(), requires_grad=True)
+    def __init__(self, bottom_betas, betas8, betas16, top_betas):
 
-        normalized_bottom_betas = F.softmax(self.bottom_betas, dim=-1)
-        normalized_betas8 = F.softmax (self.betas8, dim = -1)
-        normalized_betas16 = F.softmax(self.betas16, dim=-1)
-        normalized_top_betas = F.softmax(self.top_betas, dim=-1)
+        normalized_bottom_betas = F.softmax(bottom_betas, dim=-1)
+        normalized_betas8 = F.softmax (betas8, dim = -1)
+        normalized_betas16 = F.softmax(betas16, dim=-1)
+        normalized_top_betas = F.softmax(top_betas, dim=-1)
 
         self.network_space = torch.zeros(12,4,3)
 
@@ -74,6 +69,9 @@ class ViterbiDecoder(object):
             paths_space[layer, other_samples] = 0.
             i = paths_space[layer, prev_sample].nonzero()[0, 0]
             prev_sample = prev_sample + (i - 1)
+
+        actual_path = paths_space.nonzero()[:,1]
+        return actual_path, paths_space
 
 if __name__ == '__main__':
     viterbi = ViterbiDecoder()
