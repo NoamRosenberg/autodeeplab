@@ -395,8 +395,6 @@ class AutoDeeplab (nn.Module) :
         return self._criterion (logits, target)
 
 
-
-
 def main () :
     model = AutoDeeplab (7, 12, None)
     x = torch.tensor (torch.ones (4, 3, 224, 224))
@@ -406,10 +404,6 @@ def main () :
 
     print (resultviterbi)
     print (model.genotype())
-    # x = x.cuda()
-    # y = model (x)
-    # print (model.arch_parameters ())
-    # print (y.size())
 
 if __name__ == '__main__' :
     main ()
