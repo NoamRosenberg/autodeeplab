@@ -6,7 +6,7 @@ from genotypes import PRIMITIVES
 from genotypes import Genotype
 import torch.nn.functional as F
 from operations import *
-from decode import ViterbiDecoder
+from decode import Decoder
 
 class AutoDeeplab (nn.Module) :
     def __init__(self, num_classes, num_layers, criterion, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=cell_level_search.Cell):
@@ -175,7 +175,7 @@ class AutoDeeplab (nn.Module) :
         self.betas8 = self.betas8.to(device=img_device)
         self.betas16 = self.betas16.to(device=img_device)
         self.top_betas = self.top_betas.to(device=img_device)
-        weight_cells = F.softmax(self.alphas_cell, dim=-1)
+        normalized_alphas = F.softmax(self.alphas_cell, dim=-1)
         normalized_bottom_betas = F.softmax(self.bottom_betas, dim=-1)
         normalized_betas8 = F.softmax (self.betas8, dim = -1)
         normalized_betas16 = F.softmax(self.betas16, dim=-1)
@@ -183,27 +183,27 @@ class AutoDeeplab (nn.Module) :
         for layer in range (self._num_layers - 1) :
 
             if layer == 0 :
-                level4_new = self.cells[count] (None, self.level_4[-1], weight_cells)
+                level4_new = self.cells[count] (None, self.level_4[-1], normalized_alphas)
                 count += 1
-                level8_new = self.cells[count] (None, self.level_4[-1], weight_cells)
+                level8_new = self.cells[count] (None, self.level_4[-1], normalized_alphas)
                 count += 1
                 self.level_4.append (level4_new)
                 self.level_8.append (level8_new)
 
             elif layer == 1 :
-                level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], weight_cells)
+                level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], normalized_alphas)
                 count += 1
-                level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], weight_cells)
+                level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], normalized_alphas)
                 count += 1
                 level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
-                level8_new_1 = self.cells[count] (None, self.level_4[-1], weight_cells)
+                level8_new_1 = self.cells[count] (None, self.level_4[-1], normalized_alphas)
                 count += 1
-                level8_new_2 = self.cells[count] (None, self.level_8[-1], weight_cells)
+                level8_new_2 = self.cells[count] (None, self.level_8[-1], normalized_alphas)
                 count += 1
                 level8_new = normalized_top_betas[layer][0] * level8_new_1 + normalized_top_betas[layer][1] * level8_new_2
 
-                level16_new = self.cells[count] (None, self.level_8[-1], weight_cells)
+                level16_new = self.cells[count] (None, self.level_8[-1], normalized_alphas)
                 level16_new = level16_new
                 count += 1
 
@@ -213,29 +213,29 @@ class AutoDeeplab (nn.Module) :
                 self.level_16.append (level16_new)
 
             elif layer == 2 :
-                level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], weight_cells)
+                level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], normalized_alphas)
                 count += 1
-                level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], weight_cells)
+                level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], normalized_alphas)
                 count += 1
                 level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
-                level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], weight_cells)
+                level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], normalized_alphas)
                 count += 1
-                level8_new_2 = self.cells[count] (self.level_8[-2], self.level_8[-1], weight_cells)
+                level8_new_2 = self.cells[count] (self.level_8[-2], self.level_8[-1], normalized_alphas)
                 count += 1
 
-                level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], weight_cells)
+                level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], normalized_alphas)
                 count += 1
                 level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
 
-                level16_new_1 = self.cells[count] (None, self.level_8[-1], weight_cells)
+                level16_new_1 = self.cells[count] (None, self.level_8[-1], normalized_alphas)
                 count += 1
-                level16_new_2 = self.cells[count] (None, self.level_16[-1], weight_cells)
+                level16_new_2 = self.cells[count] (None, self.level_16[-1], normalized_alphas)
                 count += 1
                 level16_new = normalized_top_betas[layer][0] * level16_new_1 + normalized_top_betas[layer][1] * level16_new_2
 
 
-                level32_new = self.cells[count] (None, self.level_16[-1], weight_cells)
+                level32_new = self.cells[count] (None, self.level_16[-1], normalized_alphas)
                 level32_new = level32_new
                 count += 1
 
@@ -245,32 +245,32 @@ class AutoDeeplab (nn.Module) :
                 self.level_32.append (level32_new)
 
             elif layer == 3 :
-                level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], weight_cells)
+                level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], normalized_alphas)
                 count += 1
-                level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], weight_cells)
+                level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], normalized_alphas)
                 count += 1
                 level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
-                level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], weight_cells)
+                level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], normalized_alphas)
                 count += 1
-                level8_new_2 = self.cells[count] (self.level_8[-2], self.level_8[-1], weight_cells)
+                level8_new_2 = self.cells[count] (self.level_8[-2], self.level_8[-1], normalized_alphas)
                 count += 1
-                level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], weight_cells)
+                level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], normalized_alphas)
                 count += 1
                 level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
 
-                level16_new_1 = self.cells[count] (self.level_16[-2], self.level_8[-1], weight_cells)
+                level16_new_1 = self.cells[count] (self.level_16[-2], self.level_8[-1], normalized_alphas)
                 count += 1
-                level16_new_2 = self.cells[count] (self.level_16[-2], self.level_16[-1], weight_cells)
+                level16_new_2 = self.cells[count] (self.level_16[-2], self.level_16[-1], normalized_alphas)
                 count += 1
-                level16_new_3 = self.cells[count] (self.level_16[-2], self.level_32[-1], weight_cells)
+                level16_new_3 = self.cells[count] (self.level_16[-2], self.level_32[-1], normalized_alphas)
                 count += 1
                 level16_new = normalized_betas16[layer - 2][0] * level16_new_1 + normalized_betas16[layer - 2][1] * level16_new_2 + normalized_betas16[layer - 2][2] * level16_new_3
 
 
-                level32_new_1 = self.cells[count] (None, self.level_16[-1], weight_cells)
+                level32_new_1 = self.cells[count] (None, self.level_16[-1], normalized_alphas)
                 count += 1
-                level32_new_2 = self.cells[count] (None, self.level_32[-1], weight_cells)
+                level32_new_2 = self.cells[count] (None, self.level_32[-1], normalized_alphas)
                 count += 1
                 level32_new = normalized_top_betas[layer][0] * level32_new_1 + normalized_top_betas[layer][1] * level32_new_2
 
@@ -282,32 +282,32 @@ class AutoDeeplab (nn.Module) :
 
 
             else :
-                level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], weight_cells)
+                level4_new_1 = self.cells[count] (self.level_4[-2], self.level_4[-1], normalized_alphas)
                 count += 1
-                level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], weight_cells)
+                level4_new_2 = self.cells[count] (self.level_4[-2], self.level_8[-1], normalized_alphas)
                 count += 1
                 level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
-                level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], weight_cells)
+                level8_new_1 = self.cells[count] (self.level_8[-2], self.level_4[-1], normalized_alphas)
                 count += 1
-                level8_new_2 = self.cells[count] (self.level_8[-2], self.level_8[-1], weight_cells)
+                level8_new_2 = self.cells[count] (self.level_8[-2], self.level_8[-1], normalized_alphas)
                 count += 1
-                level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], weight_cells)
+                level8_new_3 = self.cells[count] (self.level_8[-2], self.level_16[-1], normalized_alphas)
                 count += 1
                 level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
 
-                level16_new_1 = self.cells[count] (self.level_16[-2], self.level_8[-1], weight_cells)
+                level16_new_1 = self.cells[count] (self.level_16[-2], self.level_8[-1], normalized_alphas)
                 count += 1
-                level16_new_2 = self.cells[count] (self.level_16[-2], self.level_16[-1], weight_cells)
+                level16_new_2 = self.cells[count] (self.level_16[-2], self.level_16[-1], normalized_alphas)
                 count += 1
-                level16_new_3 = self.cells[count] (self.level_16[-2], self.level_32[-1], weight_cells)
+                level16_new_3 = self.cells[count] (self.level_16[-2], self.level_32[-1], normalized_alphas)
                 count += 1
                 level16_new = normalized_betas16[layer - 2][0] * level16_new_1 + normalized_betas16[layer - 2][1] * level16_new_2 + normalized_betas16[layer - 2][2] * level16_new_3
 
 
-                level32_new_1 = self.cells[count] (self.level_32[-2], self.level_16[-1], weight_cells)
+                level32_new_1 = self.cells[count] (self.level_32[-2], self.level_16[-1], normalized_alphas)
                 count += 1
-                level32_new_2 = self.cells[count] (self.level_32[-2], self.level_32[-1], weight_cells)
+                level32_new_2 = self.cells[count] (self.level_32[-2], self.level_32[-1], normalized_alphas)
                 count += 1
                 level32_new = normalized_top_betas[layer][0] * level32_new_1 + normalized_top_betas[layer][1] * level32_new_2
 
@@ -350,202 +350,14 @@ class AutoDeeplab (nn.Module) :
             self.top_betas,
         ]
 
-    def decode_network (self) :
-        best_result = []
-        max_prop = 0
-        def _parse (weight_network, layer, curr_value, curr_result, last) :
-            nonlocal best_result
-            nonlocal max_prop
-            if layer == self._num_layers :
-                if max_prop < curr_value :
-                    # print (curr_result)
-                    best_result = curr_result[:]
-                    max_prop = curr_value
-                return
-
-            if layer == 0 :
-                print ('begin0')
-                num = 0
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-                    print ('end0-1')
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-
-            elif layer == 1 :
-                print ('begin1')
-
-                num = 0
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-                    print ('end1-1')
-
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-
-                num = 1
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-                    curr_value = curr_value * weight_network[layer][num][2]
-                    curr_result.append ([num,2])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
-                    curr_value = curr_value / weight_network[layer][num][2]
-                    curr_result.pop ()
-
-
-            elif layer == 2 :
-                print ('begin2')
-
-                num = 0
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-                    print ('end2-1')
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-
-                num = 1
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-                    curr_value = curr_value * weight_network[layer][num][2]
-                    curr_result.append ([num,2])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
-                    curr_value = curr_value / weight_network[layer][num][2]
-                    curr_result.pop ()
-
-                num = 2
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-                    curr_value = curr_value * weight_network[layer][num][2]
-                    curr_result.append ([num,2])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 3)
-                    curr_value = curr_value / weight_network[layer][num][2]
-                    curr_result.pop ()
-            else :
-
-                num = 0
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-
-                num = 1
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-
-                    curr_value = curr_value * weight_network[layer][num][2]
-                    curr_result.append ([num,2])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
-                    curr_value = curr_value / weight_network[layer][num][2]
-                    curr_result.pop ()
-
-                num = 2
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-
-                    curr_value = curr_value * weight_network[layer][num][2]
-                    curr_result.append ([num,2])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 3)
-                    curr_value = curr_value / weight_network[layer][num][2]
-                    curr_result.pop ()
-
-                num = 3
-                if last == num :
-                    curr_value = curr_value * weight_network[layer][num][0]
-                    curr_result.append ([num,0])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
-                    curr_value = curr_value / weight_network[layer][num][0]
-                    curr_result.pop ()
-
-                    curr_value = curr_value * weight_network[layer][num][1]
-                    curr_result.append ([num,1])
-                    _parse (weight_network, layer + 1, curr_value, curr_result, 3)
-                    curr_value = curr_value / weight_network[layer][num][1]
-                    curr_result.pop ()
-        network_weight = F.softmax(self.last_betas_network, dim=-1) * 5
-        network_weight = network_weight.data.cpu().numpy()
-        _parse (network_weight, 0, 1, [],0)
-        print (max_prop)
-        return best_result
 
     def decode_viterbi(self):
-        decoder = ViterbiDecoder(self.bottom_betas, self.betas8, self.betas16, self.top_betas)
-        return decoder.decode()
+        decoder = Decoder(self.bottom_betas, self.betas8, self.betas16, self.top_betas)
+        return decoder.viterbi_decode()
+
+    def decode_dfs(self):
+        decoder = Decoder(self.bottom_betas, self.betas8, self.betas16, self.top_betas)
+        return decoder.dfs_decode()
 
     def arch_parameters (self) :
         return self._arch_parameters
@@ -588,7 +400,7 @@ class AutoDeeplab (nn.Module) :
 def main () :
     model = AutoDeeplab (7, 12, None)
     x = torch.tensor (torch.ones (4, 3, 224, 224))
-    resultdfs = model.decode_network ()
+    resultdfs = model.decode_dfs ()
     resultviterbi = model.decode_viterbi()[0]
 
 

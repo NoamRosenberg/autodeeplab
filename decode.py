@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-class ViterbiDecoder(object):
+class Decoder(object):
     def __init__(self, bottom_betas, betas8, betas16, top_betas):
 
         normalized_bottom_betas = F.softmax(bottom_betas, dim=-1)
@@ -26,7 +26,7 @@ class ViterbiDecoder(object):
         self.network_space[3:, 2, :] = normalized_betas16
         self.network_space[3:, 3, :2] = normalized_top_betas[2:]
 
-    def decode(self):
+    def viterbi_decode(self):
 
         #remember best paths
         paths_space = torch.zeros(self.network_space.shape)
@@ -73,6 +73,200 @@ class ViterbiDecoder(object):
         actual_path = paths_space.nonzero()[:,1]
         return actual_path, paths_space
 
+    def dfs_decode (self) :
+        best_result = []
+        max_prop = 0
+        def _parse (weight_network, layer, curr_value, curr_result, last) :
+            nonlocal best_result
+            nonlocal max_prop
+            if layer == self._num_layers :
+                if max_prop < curr_value :
+                    # print (curr_result)
+                    best_result = curr_result[:]
+                    max_prop = curr_value
+                return
+
+            if layer == 0 :
+                print ('begin0')
+                num = 0
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+                    print ('end0-1')
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+
+            elif layer == 1 :
+                print ('begin1')
+
+                num = 0
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+                    print ('end1-1')
+
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+
+                num = 1
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+                    curr_value = curr_value * weight_network[layer][num][2]
+                    curr_result.append ([num,2])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
+                    curr_value = curr_value / weight_network[layer][num][2]
+                    curr_result.pop ()
+
+
+            elif layer == 2 :
+                print ('begin2')
+
+                num = 0
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+                    print ('end2-1')
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+
+                num = 1
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+                    curr_value = curr_value * weight_network[layer][num][2]
+                    curr_result.append ([num,2])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
+                    curr_value = curr_value / weight_network[layer][num][2]
+                    curr_result.pop ()
+
+                num = 2
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+                    curr_value = curr_value * weight_network[layer][num][2]
+                    curr_result.append ([num,2])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 3)
+                    curr_value = curr_value / weight_network[layer][num][2]
+                    curr_result.pop ()
+            else :
+
+                num = 0
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+
+                num = 1
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 0)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+
+                    curr_value = curr_value * weight_network[layer][num][2]
+                    curr_result.append ([num,2])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
+                    curr_value = curr_value / weight_network[layer][num][2]
+                    curr_result.pop ()
+
+                num = 2
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 1)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+
+                    curr_value = curr_value * weight_network[layer][num][2]
+                    curr_result.append ([num,2])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 3)
+                    curr_value = curr_value / weight_network[layer][num][2]
+                    curr_result.pop ()
+
+                num = 3
+                if last == num :
+                    curr_value = curr_value * weight_network[layer][num][0]
+                    curr_result.append ([num,0])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 2)
+                    curr_value = curr_value / weight_network[layer][num][0]
+                    curr_result.pop ()
+
+                    curr_value = curr_value * weight_network[layer][num][1]
+                    curr_result.append ([num,1])
+                    _parse (weight_network, layer + 1, curr_value, curr_result, 3)
+                    curr_value = curr_value / weight_network[layer][num][1]
+                    curr_result.pop ()
+        network_weight = F.softmax(self.last_betas_network, dim=-1) * 5
+        network_weight = network_weight.data.cpu().numpy()
+        _parse (network_weight, 0, 1, [],0)
+        print (max_prop)
+        return best_result
+
 if __name__ == '__main__':
     viterbi = ViterbiDecoder()
     decode = viterbi.decode()
+
