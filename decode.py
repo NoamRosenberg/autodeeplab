@@ -267,6 +267,6 @@ class Decoder(object):
         return best_result
 
 if __name__ == '__main__':
-    viterbi = ViterbiDecoder()
-    decode = viterbi.decode()
+    viterbi = Decoder()
+    decode = viterbi.viterbi_decode()
 
