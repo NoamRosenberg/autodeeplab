@@ -169,17 +169,20 @@ class AutoDeeplab (nn.Module) :
         self.level_4.append (self.stem2 (self.level_2[-1]))
 
         count = 0
-        img_device = torch.device('cuda', x.get_device())
-        self.alphas = self.alphas.to(device=img_device)
-        self.bottom_betas = self.bottom_betas.to(device=img_device)
-        self.betas8 = self.betas8.to(device=img_device)
-        self.betas16 = self.betas16.to(device=img_device)
-        self.top_betas = self.top_betas.to(device=img_device)
-        normalized_alphas = F.softmax(self.alphas, dim=-1)
-        normalized_bottom_betas = F.softmax(self.bottom_betas, dim=-1)
-        normalized_betas8 = F.softmax (self.betas8, dim = -1)
-        normalized_betas16 = F.softmax(self.betas16, dim=-1)
-        normalized_top_betas = F.softmax(self.top_betas, dim=-1)
+
+        if torch.cuda.device_count() > 1:
+            img_device = torch.device('cuda', x.get_device())
+            normalized_alphas = F.softmax(self.alphas.to(device=img_device), dim=-1)
+            normalized_bottom_betas = F.softmax(self.bottom_betas.to(device=img_device), dim=-1)
+            normalized_betas8 = F.softmax(self.betas8.to(device=img_device), dim=-1)
+            normalized_betas16 = F.softmax(self.betas16.to(device=img_device), dim=-1)
+            normalized_top_betas = F.softmax(self.top_betas.to(device=img_device), dim=-1)
+        else:
+            normalized_alphas = F.softmax(self.alphas, dim=-1)
+            normalized_bottom_betas = F.softmax(self.bottom_betas, dim=-1)
+            normalized_betas8 = F.softmax (self.betas8, dim = -1)
+            normalized_betas16 = F.softmax(self.betas16, dim=-1)
+            normalized_top_betas = F.softmax(self.top_betas, dim=-1)
         for layer in range (self._num_layers - 1) :
 
             if layer == 0 :
