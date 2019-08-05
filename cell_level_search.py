@@ -43,18 +43,16 @@ class Cell(nn.Module):
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
-        if prev_prev_fmultiplier != -1 :
-            for i in range(self._steps):
-                for j in range(2+i):
-                    stride = 1
+
+        for i in range(self._steps):
+            for j in range(2+i):
+                stride = 1
+                if prev_prev_fmultiplier == -1 and j==0:
+                    op = None
+                else:
                     op = MixedOp(self.C_out, stride)
-                    self._ops.append(op)
-        else :
-            for i in range(self._steps):
-                for j in range(1+i):
-                    stride = 1
-                    op = MixedOp(self.C_out, stride)
-                    self._ops.append(op)
+                self._ops.append(op)
+
 
         self.ReLUConvBN = ReLUConvBN (self.C_in, self.C_out, 1, 1, 0)
 
@@ -66,13 +64,17 @@ class Cell(nn.Module):
         if s0 is not None :
             states = [s0, s1]
         else :
-            states = [s1]
+            states = [0, s1]
         offset = 0
         for i in range(self._steps):
             new_states = []
             for j, h in enumerate(states):
-                new_state = self._ops[offset + j](h, weights[offset + j])
+                branch_index = offset + j
+                if self._ops[branch_index] is None:
+                    continue
+                new_state = self._ops[branch_index](h, weights[branch_index])
                 new_states.append(new_state)
+                #assert h!=new_state!=0
             s = sum(new_states)
             #s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
             offset += len(states)
