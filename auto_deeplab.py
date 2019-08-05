@@ -170,12 +170,12 @@ class AutoDeeplab (nn.Module) :
 
         count = 0
         img_device = torch.device('cuda', x.get_device())
-        self.alphas_cell = self.alphas_cell.to(device=img_device)
+        self.alphas = self.alphas.to(device=img_device)
         self.bottom_betas = self.bottom_betas.to(device=img_device)
         self.betas8 = self.betas8.to(device=img_device)
         self.betas16 = self.betas16.to(device=img_device)
         self.top_betas = self.top_betas.to(device=img_device)
-        normalized_alphas = F.softmax(self.alphas_cell, dim=-1)
+        normalized_alphas = F.softmax(self.alphas, dim=-1)
         normalized_bottom_betas = F.softmax(self.bottom_betas, dim=-1)
         normalized_betas8 = F.softmax (self.betas8, dim = -1)
         normalized_betas16 = F.softmax(self.betas16, dim=-1)
@@ -336,18 +336,18 @@ class AutoDeeplab (nn.Module) :
     def _initialize_alphas_betas(self):
         k = sum(1 for i in range(self._step) for n in range(2+i))
         num_ops = len(PRIMITIVES)
-        self.alphas_cell = torch.tensor (1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self.bottom_betas = torch.tensor (1e-3 * torch.randn(self._num_layers - 1, 2).cuda(), requires_grad=True)
-        self.betas8 = torch.tensor (1e-3 * torch.randn(self._num_layers - 2, 3).cuda(), requires_grad=True)
-        self.betas16 = torch.tensor(1e-3 * torch.randn(self._num_layers - 3, 3).cuda(), requires_grad=True)
-        self.top_betas = torch.tensor (1e-3 * torch.randn(self._num_layers - 1, 2).cuda(), requires_grad=True)
+        alphas = torch.tensor (1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+        bottom_betas = torch.tensor (1e-3 * torch.randn(self._num_layers - 1, 2).cuda(), requires_grad=True)
+        betas8 = torch.tensor (1e-3 * torch.randn(self._num_layers - 2, 3).cuda(), requires_grad=True)
+        betas16 = torch.tensor(1e-3 * torch.randn(self._num_layers - 3, 3).cuda(), requires_grad=True)
+        top_betas = torch.tensor (1e-3 * torch.randn(self._num_layers - 1, 2).cuda(), requires_grad=True)
 
         self._arch_parameters = [
-            self.alphas_cell,
-            self.bottom_betas,
-            self.betas8,
-            self.betas16,
-            self.top_betas,
+            alphas,
+            bottom_betas,
+            betas8,
+            betas16,
+            top_betas,
         ]
         self._arch_param_names = [
             'alphas',
@@ -356,7 +356,7 @@ class AutoDeeplab (nn.Module) :
             'betas16',
             'top_betas']
 
-        [self.register_parameter(name, param) for name, param in zip(self._arch_param_names, self._arch_parameters)]
+        [self.register_parameter(name, torch.nn.Parameter(param)) for name, param in zip(self._arch_param_names, self._arch_parameters)]
 
     def decode_viterbi(self):
         decoder = Decoder(self.bottom_betas, self.betas8, self.betas16, self.top_betas)
