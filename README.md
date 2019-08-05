@@ -20,7 +20,9 @@ From the auto-deeplab paper |  Our half-sized model takes twice as long to train
 ![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours.png)
 
 For half-sized model set --filter_multiplier 4 --resize 358 --crop_size 224
+<br/><br/>
 For full-sized model set leave parameters to their default setting
+<br/><br/>
 ## Requirements
 
 * Pytorch version 1.1
@@ -41,7 +43,7 @@ For full-sized model set leave parameters to their default setting
 
 ## Training 
 
-***Begin Architecture Search***
+***To begin Architecture Search***
 
 **Start training**
 ```
