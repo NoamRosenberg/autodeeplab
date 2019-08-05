@@ -19,9 +19,9 @@ From the auto-deeplab paper |  Our half-sized model takes twice as long to train
 :---------------------------------------:|:-------------------------:
 ![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours.png)
 
-For half-sized model set --filter_multiplier 4 --resize 358 --crop_size 224
+For half-sized model, set --filter_multiplier 4 --resize 358 --crop_size 224
 <br/><br/>
-For full-sized model set leave parameters to their default setting
+For full-sized model, leave parameters to their default setting
 <br/><br/>
 ## Requirements
 
@@ -43,7 +43,7 @@ For full-sized model set leave parameters to their default setting
 
 ## Training 
 
-***To begin Architecture Search***
+***Begin Architecture Search***
 
 **Start training**
 ```
