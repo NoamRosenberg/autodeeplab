@@ -13,8 +13,15 @@ Following the popular trend of modern CNN architectures having a two level hiera
 Auto-Deeplab acheives a better performance while minimizing the size of the final model.
 ![model results](./images/results.png)
 
+<br/><br/>
 
+From the auto-deeplab paper  |  Our half sized model takes twice as long to train
 
+:-------------------------:|:-------------------------:
+![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours.png)
+
+For half-sized model set --filter_multiplier 4 --resize 358 --crop_size 224
+For full-sized model set leave parameters to their default setting
 ## Requirements
 
 * Pytorch version 1.1
@@ -33,7 +40,9 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 
 * pandas
 
-## Training
+## Training 
+
+***Begin Architecture Search***
 
 **Start training**
 ```
