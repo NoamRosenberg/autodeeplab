@@ -349,7 +349,14 @@ class AutoDeeplab (nn.Module) :
             self.betas16,
             self.top_betas,
         ]
+        self._arch_param_names = [
+            'alphas',
+            'bottom_betas',
+            'betas8',
+            'betas16',
+            'top_betas']
 
+        [self.register_parameter(name, param) for name, param in zip(self._arch_param_names, self._arch_parameters)]
 
     def decode_viterbi(self):
         decoder = Decoder(self.bottom_betas, self.betas8, self.betas16, self.top_betas)
@@ -360,35 +367,14 @@ class AutoDeeplab (nn.Module) :
         return decoder.dfs_decode()
 
     def arch_parameters (self) :
-        return self._arch_parameters
+        return [param for name, param in self.named_parameters() if name in self._arch_param_names]
+
+    def weight_parameters(self):
+        return [param for name, param in self.named_parameters() if name not in self._arch_param_names]
 
     def genotype(self):
-        def _parse(weights):
-            gene = []
-            n = 2
-            start = 0
-            for i in range(self._step):
-                end = start + n
-                W = weights[start:end].copy()
-                edges = sorted (range(i + 2), key=lambda x: -max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES.index('none')))[:2]
-                for j in edges:
-                    k_best = None
-                    for k in range(len(W[j])):
-                        if k != PRIMITIVES.index('none'):
-                            if k_best is None or W[j][k] > W[j][k_best]:
-                                k_best = k
-                    gene.append((PRIMITIVES[k_best], j))
-                start = end
-                n += 1
-            return gene
-
-        gene_cell = _parse(F.softmax(self.alphas_cell, dim=-1).data.cpu().numpy())
-        concat = range(2 + self._step - self._block_multiplier, self._step + 2)
-        genotype = Genotype(
-            cell=gene_cell, cell_concat=concat
-        )
-
-        return genotype
+        decoder = Decoder(self.alphas_cell, self._block_multiplier, self._step)
+        return decoder.genotype_decode()
 
     def _loss (self, input, target) :
         logits = self (input)

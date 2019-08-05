@@ -266,6 +266,33 @@ class Decoder(object):
         print (max_prop)
         return best_result
 
+    def genotype_decode(self, alphas_cell, block_multiplier, steps):
+        def _parse(weights):
+            gene = []
+            n = 2
+            start = 0
+            for i in range(self._step):
+                end = start + n
+                W = weights[start:end].copy()
+                edges = sorted (range(i + 2), key=lambda x: -max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES.index('none')))[:2]
+                for j in edges:
+                    k_best = None
+                    for k in range(len(W[j])):
+                        if k != PRIMITIVES.index('none'):
+                            if k_best is None or W[j][k] > W[j][k_best]:
+                                k_best = k
+                    gene.append((PRIMITIVES[k_best], j))
+                start = end
+                n += 1
+            return gene
+        gene_cell = _parse(F.softmax(alphas_cell, dim=-1).data.cpu().numpy())
+        concat = range(2 + steps - block_multiplier, steps + 2)
+        genotype = Genotype(
+            cell=gene_cell, cell_concat=concat
+        )
+
+        return genotype
+
 if __name__ == '__main__':
     viterbi = Decoder()
     decode = viterbi.viterbi_decode()

@@ -47,7 +47,7 @@ class Trainer(object):
         # Define network
         model = AutoDeeplab (num_classes=self.nclass, num_layers=12, criterion=self.criterion, filter_multiplier=self.args.filter_multiplier)
         optimizer = torch.optim.SGD(
-                model.parameters(),
+                model.weight_parameters(),
                 args.lr,
                 momentum=args.momentum,
                 weight_decay=args.weight_decay
