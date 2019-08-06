@@ -24,22 +24,28 @@ class MixedOp (nn.Module):
 
 class Cell(nn.Module):
 
-    def __init__(self, steps, block_multiplier, prev_prev_fmultiplier, prev_fmultiplier, filter_multiplier, rate):
+    def __init__(self, steps, block_multiplier, prev_prev_fmultiplier,
+                 prev_fmultiplier_down, prev_fmultiplier_same, prev_fmultiplier_up,
+                 filter_multiplier):
 
         super(Cell, self).__init__()
-        self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
-        self.C_prev = int(prev_fmultiplier * block_multiplier)
         self.C_in = block_multiplier * filter_multiplier * block_multiplier
         self.C_out = filter_multiplier * block_multiplier
-        if prev_prev_fmultiplier != -1 :
-            self.preprocess0 = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
+        self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
+        if prev_fmultiplier_down is not None:
+            self.C_prev_down = int(prev_fmultiplier_down * block_multiplier)
+            self.preprocess_down = FactorizedReduce(self.C_prev_down, self.C_out, affine=False)
+        if prev_fmultiplier_same is not None:
+            self.C_prev_same = int(prev_fmultiplier_same * block_multiplier)
+            self.preprocess_same = ReLUConvBN(self.C_prev_same, self.C_out, 1, 1, 0, affine=False)
+        if prev_fmultiplier_up is not None:
+            self.C_prev_up = int(prev_fmultiplier_up * block_multiplier)
+            self.preprocess_up = FactorizedIncrease(self.C_prev_up, self.C_out)
 
-        if rate == 2 :
-            self.preprocess1 = FactorizedReduce (self.C_prev, self.C_out, affine= False)
-        elif rate == 0 :
-            self.preprocess1 = FactorizedIncrease (self.C_prev, self.C_out)
-        else :
-            self.preprocess1 = ReLUConvBN(self.C_prev, self.C_out, 1, 1, 0, affine=False)
+
+        if prev_prev_fmultiplier != -1 :
+            self.pre_preprocess = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
+
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
@@ -57,32 +63,59 @@ class Cell(nn.Module):
         self.ReLUConvBN = ReLUConvBN (self.C_in, self.C_out, 1, 1, 0)
 
 
-    def forward(self, s0, s1, weights):
+    def forward(self, s0, s1_down, s1_same, s1_up, n_alphas):
+
+        if s1_down is not None:
+            s1_down = self.preprocess_down(s1_down)
+        if s1_same is not None:
+            s1_same = self.preprocess_same(s1_same)
+        if s1_up is not None:
+            s1_up = self.preprocess_up(s1_up)
+        all_states = []
         if s0 is not None :
-            s0 = self.preprocess0 (s0)
-        s1 = self.preprocess1(s1)
-        if s0 is not None :
-            states = [s0, s1]
+            s0 = self.pre_preprocess(s0)
+            if s1_down is not None:
+                states_down = [s0, s1_down]
+                all_states.append(states_down)
+            if s1_same is not None:
+                states_same = [s0, s1_same]
+                all_states.append(states_same)
+            if s1_up is not None:
+                states_up = [s0, s1_up]
+                all_states.append(states_up)
         else :
-            states = [0, s1]
-        offset = 0
-        for i in range(self._steps):
-            new_states = []
-            for j, h in enumerate(states):
-                branch_index = offset + j
-                if self._ops[branch_index] is None:
-                    continue
-                new_state = self._ops[branch_index](h, weights[branch_index])
-                new_states.append(new_state)
-                #assert h!=new_state!=0
-            s = sum(new_states)
-            #s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
-            offset += len(states)
-            states.append(s)
+            if s1_down is not None:
+                states_down = [0, s1_down]
+                all_states.append(states_down)
+            if s1_same is not None:
+                states_same = [0, s1_same]
+                all_states.append(states_same)
+            if s1_up is not None:
+                states_up = [0, s1_up]
+                all_states.append(states_up)
 
 
-        concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
-        return  self.ReLUConvBN (concat_feature)
+        final_concates = []
+        for states in all_states:
+            offset = 0
+            for i in range(self._steps):
+                new_states = []
+                for j, h in enumerate(states):
+                    branch_index = offset + j
+                    if self._ops[branch_index] is None:
+                        continue
+                    new_state = self._ops[branch_index](h, n_alphas[branch_index])
+                    new_states.append(new_state)
+                    #assert h!=new_state!=0
+                s = sum(new_states)
+                #s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+                offset += len(states)
+                states.append(s)
+
+
+            concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
+            final_concates.append(self.ReLUConvBN (concat_feature))
+        return  final_concates
 
 
 
