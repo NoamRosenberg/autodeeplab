@@ -131,9 +131,8 @@ class ASPP(nn.Module):
         image_pool = nn.AvgPool2d(kernel_size=x.size()[2:])
         upsample = nn.Upsample(size=x.size()[2:], mode='bilinear', align_corners=True)
         image_pool = image_pool(x)
-        upsample = upsample(image_pool)
-        upsample = self.conv_p(upsample)
-
+        conv_image_pool = self.conv_p(image_pool)
+        upsample = upsample(conv_image_pool)
 
         # concate
         concate = torch.cat([conv11, conv33, upsample], dim=1)
