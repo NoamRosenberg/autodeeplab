@@ -17,8 +17,52 @@ from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
 from auto_deeplab import AutoDeeplab
 from architect import Architect
+from decode import Decoder
 
 class Something(object):
+
+    def __init__(self, args):
+        self.args = args
+
+        self.model = AutoDeeplab(num_classes=self.nclass, num_layers=12, criterion=self.criterion,
+                            filter_multiplier=self.args.filter_multiplier)
+        # Using cuda
+        if args.cuda:
+            if (torch.cuda.device_count() > 1 or args.load_parallel):
+                self.model = torch.nn.DataParallel(self.model.cuda())
+                patch_replication_callback(self.model)
+            self.model = self.model.cuda()
+            print('cuda finished')
+
+        # Resuming checkpoint
+        self.best_pred = 0.0
+        if args.resume is not None:
+            if not os.path.isfile(args.resume):
+                raise RuntimeError("=> no checkpoint found at '{}'".format(args.resume))
+            checkpoint = torch.load(args.resume)
+            args.start_epoch = checkpoint['epoch']
+
+            # if the weights are wrapped in module object we have to clean it
+            if args.clean_module:
+                self.model.load_state_dict(checkpoint['state_dict'])
+                state_dict = checkpoint['state_dict']
+                new_state_dict = OrderedDict()
+                for k, v in state_dict.items():
+                    name = k[7:]  # remove 'module.' of dataparallel
+                    new_state_dict[name] = v
+                self.model.load_state_dict(new_state_dict)
+
+            else:
+                if (torch.cuda.device_count() > 1 or args.load_parallel):
+                    self.model.module.load_state_dict(checkpoint['state_dict'])
+                else:
+                    self.model.load_state_dict(checkpoint['state_dict'])
+
+    def retreive_alphas_betas(self):
+
+        return self.model.alphas, self.model.bottom_betas, self.model.betas8, self.model.betas16, self.model.top_betas
+
+class trainNew(object):
 
     def __init__(self, args):
         self.args = args
@@ -28,8 +72,7 @@ class Something(object):
         self.saver.save_experiment_config()
 
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
-        self.train_loaderA, self.train_loaderB, self.val_loader, self.test_loader, self.nclass = make_data_loader(args,
-                                                                                                                  **kwargs)
+        self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args,**kwargs)
 
 
         weight = None
@@ -50,10 +93,8 @@ class Something(object):
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
-                                      args.epochs, len(self.train_loaderA), min_lr=args.min_lr)
-
-        self.architect = Architect(self.model, args)
-
+                                      args.epochs, len(self.train_loader), min_lr=args.min_lr)
+        # TODO: Figure out if len(self.train_loader) should be devided by two ? in other module as well
         # Using cuda
         if args.cuda:
             if (torch.cuda.device_count() > 1 or args.load_parallel):
@@ -61,12 +102,6 @@ class Something(object):
                 patch_replication_callback(self.model)
             self.model = self.model.cuda()
             print('cuda finished')
-
-        # checkpoint = torch.load(args.resume)
-        # print('about to load state_dict')
-        # self.model.load_state_dict(checkpoint['state_dict'])
-        # print('model loaded')
-        # sys.exit()
 
         # Resuming checkpoint
         self.best_pred = 0.0
@@ -102,15 +137,16 @@ class Something(object):
         if args.ft:
             args.start_epoch = 0
 
-
 def main () :
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
     parser.add_argument('--backbone', type=str, default='resnet',
                         choices=['resnet', 'xception', 'drn', 'mobilenet'],
                         help='backbone name (default: resnet)')
-    parser.add_argument('--dataset', type=str, default='kd',
+    parser.add_argument('--dataset', type=str, default='cityscapes',
                         choices=['pascal', 'coco', 'cityscapes', 'kd'],
                         help='dataset name (default: pascal)')
+    parser.add_argument('--autodeeplab', type=str, default='train',
+                        choices=['search', 'train'])
     parser.add_argument('--load-parallel', type=int, default=0)
     parser.add_argument('--clean-module', type=int, default=0)
     parser.add_argument('--workers', type=int, default=0,
@@ -137,8 +173,9 @@ def main () :
 
     args = parser.parse_args()
     something = Something(args)
-
-
+    bottom_betas, betas8, betas16, top_betas = something.retreive_alphas_betas()
+    decoder = Decoder(bottom_betas, betas8, betas16, top_betas)
+    decoder.viterbi_decode()
 
     model = AutoDeeplab (7, 12, None)
     x = torch.tensor (torch.ones (4, 3, 224, 224))
