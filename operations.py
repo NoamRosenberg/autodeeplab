@@ -117,7 +117,8 @@ class ASPP(nn.Module):
                                     padding=paddings, dilation=dilations, bias=False, ),
                                       nn.BatchNorm2d(in_channels))
         self.conv_p = nn.Sequential(nn.Conv2d(in_channels, in_channels, 1, bias=False, ),
-                                    nn.BatchNorm2d(in_channels))
+                                    nn.BatchNorm2d(in_channels),
+                                    nn.ReLU())
 
         self.concate_conv = nn.Conv2d(in_channels * 3, out_channels, 1, bias=False,  stride=1, padding=0)
 

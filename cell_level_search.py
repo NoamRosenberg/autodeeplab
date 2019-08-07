@@ -108,7 +108,7 @@ class Cell(nn.Module):
                     new_states.append(new_state)
                     #assert h!=new_state!=0
                 s = sum(new_states)
-                #s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+
                 offset += len(states)
                 states.append(s)
 
