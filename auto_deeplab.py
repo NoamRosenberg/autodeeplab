@@ -21,15 +21,15 @@ class AutoDeeplab (nn.Module) :
         self._criterion = criterion
         self._initialize_alphas_betas ()
         C_initial = self._filter_multiplier *  self._block_multiplier
-        half_C_initial = C_initial / 2
+        half_C_initial = int(C_initial / 2)
         self.stem0 = nn.Sequential(
             nn.Conv2d(3, half_C_initial, 3, stride=2, padding=1),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(half_C_initial),
             nn.ReLU ()
         )
         self.stem1 = nn.Sequential(
             nn.Conv2d(half_C_initial, half_C_initial, 3, padding=1),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(half_C_initial),
             nn.ReLU ()
         )
         self.stem2 = nn.Sequential(
