@@ -109,7 +109,7 @@ class FactorizedIncrease (nn.Module) :
 
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels, paddings, dilations):
-        # todo depthwise separable conv
+
         super(ASPP, self).__init__()
         self.conv11 = nn.Sequential(nn.Conv2d(in_channels, in_channels, 1, bias=False, ),
                                     nn.BatchNorm2d(in_channels))
