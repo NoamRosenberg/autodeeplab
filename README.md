@@ -59,8 +59,12 @@ CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume
 ```
 CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
 ```
+<br/><br/>
+***Once you are finishing the training of your search space it's time to decode the architecture
+and cell space and find the optimal model for your data!***
 
-**Load already trained search model and retrieve decoded model**
+
+**Load and decoded model**
 ```
 CUDA_VISIBLE_DEVICES=0 python decode_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
