@@ -23,23 +23,6 @@ From the auto-deeplab paper |  Our half-sized model takes twice as long to train
 <br/><br/>
 ***For full-sized model, leave parameters to their default setting***
 <br/><br/>
-## Requirements
-
-* Pytorch version 1.1
-
-* Python 3
-
-* tensorboardX
-
-* torchvision
-
-* pycocotools
-
-* tqdm
-
-* numpy
-
-* pandas
 
 ## Training 
 
@@ -59,9 +42,8 @@ CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume
 ```
 CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
 ```
-<br/><br/>
-***Once you are finishing the training of your search space it's time to decode the architecture
-and cell space in order to find the optimal model for your data and task.***
+
+***Once you are done training it's time to decode the search space, and find the optimal model for your data and task.***
 
 
 **Load and decoded model**
@@ -69,6 +51,23 @@ and cell space in order to find the optimal model for your data and task.***
 CUDA_VISIBLE_DEVICES=0 python decode_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
 
+## Requirements
+
+* Pytorch version 1.1
+
+* Python 3
+
+* tensorboardX
+
+* torchvision
+
+* pycocotools
+
+* tqdm
+
+* numpy
+
+* pandas
 
 ## References
 [1] : [Auto-DeepLab: Hierarchical Neural Architecture Search for Semantic Image Segmentation](https://arxiv.org/abs/1901.02985)
