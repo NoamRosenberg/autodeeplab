@@ -61,7 +61,7 @@ CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batc
 ```
 <br/><br/>
 ***Once you are finishing the training of your search space it's time to decode the architecture
-and cell space and find the optimal model for your data!***
+and cell space in order to find the optimal model for your data and task.***
 
 
 **Load and decoded model**
