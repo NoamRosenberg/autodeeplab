@@ -17,7 +17,8 @@ from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
 from auto_deeplab import AutoDeeplab
 from architect import Architect
-from decode import Decoder
+from decoding_formulas import Decoder
+
 
 class Loader(object):
 
@@ -26,8 +27,8 @@ class Loader(object):
         if self.args.dataset == 'cityscapes':
             self.nclass = 19
 
-        self.model = AutoDeeplab(num_classes=self.nclass, num_layers=12, criterion=self.criterion,
-                            filter_multiplier=self.args.filter_multiplier)
+        self.model = AutoDeeplab(num_classes=self.nclass, num_layers=12, filter_multiplier=self.args.filter_multiplier,
+                                 block_multiplier=args.block_multiplier, step=args.step)
         # Using cuda
         if args.cuda:
             if (torch.cuda.device_count() > 1 or args.load_parallel):
@@ -60,14 +61,25 @@ class Loader(object):
                 else:
                     self.model.load_state_dict(checkpoint['state_dict'])
 
-    def retreive_alphas_betas(self):
+        self.decoder = Decoder(self.model.alphas,
+                               self.model.bottom_betas,
+                               self.model.betas8,
+                               self.model.betas16,
+                               self.model.top_betas,
+                               args.block_multiplier,
+                               args.step)
 
+    def retreive_alphas_betas(self):
         return self.model.alphas, self.model.bottom_betas, self.model.betas8, self.model.betas16, self.model.top_betas
 
-    def decode(self):
+    def decode_architecture(self):
+        paths, paths_space = self.decoder.viterbi_decode()
+        return paths, paths_space
 
-        decoder = Decoder(self.model.bottom_betas, self.model.betas8, self.model.betas16, self.model.top_betas)
-        paths, path_space = decoder.viterbi_decode()
+    def decode_cell(self):
+        genotype = self.decoder.genotype_decode()
+        return genotype
+
 
 class trainNew(object):
 
@@ -165,7 +177,8 @@ def main () :
     parser.add_argument('--resize', type=int, default=512,
                         help='resize image size')
     parser.add_argument('--filter_multiplier', type=int, default=8)
-
+    parser.add_argument('--block_multiplier', type=int, default=5)
+    parser.add_argument('--step', type=int, default=5)
     parser.add_argument('--batch-size', type=int, default=2,
                         metavar='N', help='input batch size for \
                                 training (default: auto)')
@@ -179,18 +192,13 @@ def main () :
 
 
     args = parser.parse_args()
-    loader = Loader(args)
-    loader.decode()
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    load_model = Loader(args)
+    result_paths, _ = load_model.decode_architecture()
+    genotype = load_model.decode_cell()
 
-
-    model = AutoDeeplab (7, 12, None)
-    x = torch.tensor (torch.ones (4, 3, 224, 224))
-    resultdfs = model.decode_dfs ()
-    resultviterbi = model.decode_viterbi()[0]
-
-
-    print (resultviterbi)
-    print (model.genotype())
+    print ('architecture search results:',result_paths)
+    print ('new cell structure:', genotype)
 
 if __name__ == '__main__' :
     main ()

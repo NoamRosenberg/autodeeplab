@@ -45,7 +45,8 @@ class Trainer(object):
         self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
 
         # Define network
-        model = AutoDeeplab (num_classes=self.nclass, num_layers=12, criterion=self.criterion, filter_multiplier=self.args.filter_multiplier)
+        model = AutoDeeplab (num_classes=self.nclass, num_layers=12, criterion=self.criterion, filter_multiplier=self.args.filter_multiplier,
+                             block_multiplier=self.args.block_multiplier, step=self.args.step)
         optimizer = torch.optim.SGD(
                 model.weight_parameters(),
                 args.lr,
@@ -252,6 +253,8 @@ def main():
     parser.add_argument('--start_epoch', type=int, default=0,
                         metavar='N', help='start epochs (default:0)')
     parser.add_argument('--filter_multiplier', type=int, default=8)
+    parser.add_argument('--block_multiplier', type=int, default=5)
+    parser.add_argument('--step', type=int, default=5)
     parser.add_argument('--alpha_epoch', type=int, default=20,
                         metavar='N', help='epoch to start training alphas')
     parser.add_argument('--batch-size', type=int, default=2,

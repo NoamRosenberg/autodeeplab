@@ -6,10 +6,10 @@ from genotypes import PRIMITIVES
 from genotypes import Genotype
 import torch.nn.functional as F
 from operations import *
-from decode import Decoder
+from decoding_formulas import Decoder
 
 class AutoDeeplab (nn.Module) :
-    def __init__(self, num_classes, num_layers, criterion, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=cell_level_search.Cell):
+    def __init__(self, num_classes, num_layers, criterion = None, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=cell_level_search.Cell):
         super(AutoDeeplab, self).__init__()
 
         self.cells = nn.ModuleList()
