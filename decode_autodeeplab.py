@@ -19,7 +19,7 @@ from auto_deeplab import AutoDeeplab
 from architect import Architect
 from decode import Decoder
 
-class Something(object):
+class Loader(object):
 
     def __init__(self, args):
         self.args = args
@@ -61,6 +61,11 @@ class Something(object):
     def retreive_alphas_betas(self):
 
         return self.model.alphas, self.model.bottom_betas, self.model.betas8, self.model.betas16, self.model.top_betas
+
+    def decode(self):
+
+        decoder = Decoder(self.model.bottom_betas, self.model.betas8, self.model.betas16, self.model.top_betas)
+        paths, path_space = decoder.viterbi_decode()
 
 class trainNew(object):
 
@@ -172,10 +177,9 @@ def main () :
 
 
     args = parser.parse_args()
-    something = Something(args)
-    bottom_betas, betas8, betas16, top_betas = something.retreive_alphas_betas()
-    decoder = Decoder(bottom_betas, betas8, betas16, top_betas)
-    decoder.viterbi_decode()
+    loader = Loader(args)
+    loader.decode()
+
 
     model = AutoDeeplab (7, 12, None)
     x = torch.tensor (torch.ones (4, 3, 224, 224))
