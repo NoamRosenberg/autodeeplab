@@ -1,9 +1,11 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+from genotypes import PRIMITIVES
+from genotypes import Genotype
 
 class Decoder(object):
-    def __init__(self, bottom_betas, betas8, betas16, top_betas):
+    def __init__(self, alphas, bottom_betas, betas8, betas16, top_betas, block_multiplier, steps):
 
         normalized_bottom_betas = F.softmax(bottom_betas, dim=-1)
         normalized_betas8 = F.softmax (betas8, dim = -1)
@@ -25,6 +27,10 @@ class Decoder(object):
 
         self.network_space[3:, 2, :] = normalized_betas16
         self.network_space[3:, 3, :2] = normalized_top_betas[2:]
+
+        self.alphas = alphas
+        self.block_multiplier = block_multiplier
+        self.steps = steps
 
     def viterbi_decode(self):
 
@@ -266,7 +272,8 @@ class Decoder(object):
         print (max_prop)
         return best_result
 
-    def genotype_decode(self, alphas_cell, block_multiplier, steps):
+    def genotype_decode(self):
+
         def _parse(weights):
             gene = []
             n = 2
@@ -285,15 +292,12 @@ class Decoder(object):
                 start = end
                 n += 1
             return gene
-        gene_cell = _parse(F.softmax(alphas_cell, dim=-1).data.cpu().numpy())
-        concat = range(2 + steps - block_multiplier, steps + 2)
+        gene_cell = _parse(F.softmax(self.alphas, dim=-1).data.cpu().numpy())
+        concat = range(2 + self.steps - self.block_multiplier, self.steps + 2)
         genotype = Genotype(
             cell=gene_cell, cell_concat=concat
         )
 
         return genotype
 
-if __name__ == '__main__':
-    viterbi = Decoder()
-    decode = viterbi.viterbi_decode()
 
