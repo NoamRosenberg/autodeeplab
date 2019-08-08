@@ -60,6 +60,12 @@ CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume
 CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
 ```
 
+**Load already trained search model and retrieve decoded model**
+```
+CUDA_VISIBLE_DEVICES=0 python decode_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
+```
+
+
 ## References
 [1] : [Auto-DeepLab: Hierarchical Neural Architecture Search for Semantic Image Segmentation](https://arxiv.org/abs/1901.02985)
 
