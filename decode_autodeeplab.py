@@ -23,6 +23,8 @@ class Loader(object):
 
     def __init__(self, args):
         self.args = args
+        if self.args.dataset == 'cityscapes':
+            self.nclass = 19
 
         self.model = AutoDeeplab(num_classes=self.nclass, num_layers=12, criterion=self.criterion,
                             filter_multiplier=self.args.filter_multiplier)
