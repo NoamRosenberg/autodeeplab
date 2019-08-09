@@ -80,7 +80,7 @@ class Loader(object):
         return genotype
 
 
-def main () :
+def get_new_network_cell() :
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
     parser.add_argument('--backbone', type=str, default='resnet',
                         choices=['resnet', 'xception', 'drn', 'mobilenet'],
@@ -113,14 +113,17 @@ def main () :
 
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
+
     load_model = Loader(args)
     result_paths, _ = load_model.decode_architecture()
+    network_path = result_paths.numpy()
     genotype = load_model.decode_cell()
 
-    print ('architecture search results:',result_paths)
+    print ('architecture search results:',network_path)
     print ('new cell structure:', genotype)
 
-
+    args.resume
+    np.save(network_path)
 
 if __name__ == '__main__' :
-    main ()
+    get_new_network_cell()

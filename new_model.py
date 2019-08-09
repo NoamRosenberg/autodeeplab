@@ -8,8 +8,8 @@ import torch.nn.functional as F
 from operations import *
 
 
-class AutoDeeplab (nn.Module) :
-    def __init__(self, num_classes, num_layers, criterion = None, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=cell_level_search.Cell):
+class newModel (nn.Module) :
+    def __init__(self, new_network, new_cell, num_classes, num_layers, criterion = None, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=cell_level_search.Cell):
         super(AutoDeeplab, self).__init__()
 
         self.cells = nn.ModuleList()

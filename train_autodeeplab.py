@@ -60,7 +60,7 @@ class Trainer(object):
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
                                       args.epochs, len(self.train_loaderA), min_lr=args.min_lr)
-
+        # TODO: Figure out if len(self.train_loader) should be devided by two ? in other module as well
         self.architect = Architect (self.model, args)
 
 

@@ -16,7 +16,7 @@ from utils.metrics import Evaluator
 from new_model import newmodel
 
 class trainNew(object):
-    def __init__(self, args):
+    def __init__(self, args, new_network_arch, new_cell_arch):
         self.args = args
 
         # Define Saver
@@ -31,7 +31,9 @@ class trainNew(object):
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
 
         # Define network
-        model = newModel(num_classes=self.nclass,
+        model = newModel(new_network= new_network_arch,
+                        new_cell = new_cell_arch,
+                        num_classes=self.nclass,
                         backbone=args.backbone,
                         output_stride=args.out_stride,
                         sync_bn=args.sync_bn,
@@ -305,15 +307,15 @@ def main():
         args.checkname = 'deeplab-'+str(args.backbone)
     print(args)
     torch.manual_seed(args.seed)
-    trainer = Trainer(args)
-    print('Starting Epoch:', trainer.args.start_epoch)
-    print('Total Epoches:', trainer.args.epochs)
-    for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
-        trainer.training(epoch)
-        if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
-            trainer.validation(epoch)
+    new_trainer = trainNew(args)
+    print('Starting Epoch:', new_trainer.args.start_epoch)
+    print('Total Epoches:', new_trainer.args.epochs)
+    for epoch in range(new_trainer.args.start_epoch, new_trainer.args.epochs):
+        new_trainer.training(epoch)
+        if not new_trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
+            new_trainer.validation(epoch)
 
-    trainer.writer.close()
+    new_trainer.writer.close()
 
 if __name__ == "__main__":
    main()
