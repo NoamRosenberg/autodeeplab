@@ -21,6 +21,7 @@ from decoding_formulas import Decoder
 
 
 class Loader(object):
+
     def __init__(self, args):
         self.args = args
         if self.args.dataset == 'cityscapes':
@@ -80,6 +81,81 @@ class Loader(object):
         return genotype
 
 
+class trainNew(object):
+
+    def __init__(self, args):
+        self.args = args
+
+        # Define Saver
+        self.saver = Saver(args)
+        self.saver.save_experiment_config()
+
+        kwargs = {'num_workers': args.workers, 'pin_memory': True}
+        self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args,**kwargs)
+
+
+        weight = None
+        self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
+
+        # Define network
+        model = AutoDeeplab(num_classes=self.nclass, num_layers=12, criterion=self.criterion,
+                            filter_multiplier=self.args.filter_multiplier)
+        optimizer = torch.optim.SGD(
+            model.weight_parameters(),
+            args.lr,
+            momentum=args.momentum,
+            weight_decay=args.weight_decay
+        )
+
+        self.model, self.optimizer = model, optimizer
+        # Define Evaluator
+        self.evaluator = Evaluator(self.nclass)
+        # Define lr scheduler
+        self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
+                                      args.epochs, len(self.train_loader), min_lr=args.min_lr)
+        # TODO: Figure out if len(self.train_loader) should be devided by two ? in other module as well
+        # Using cuda
+        if args.cuda:
+            if (torch.cuda.device_count() > 1 or args.load_parallel):
+                self.model = torch.nn.DataParallel(self.model.cuda())
+                patch_replication_callback(self.model)
+            self.model = self.model.cuda()
+            print('cuda finished')
+
+        # Resuming checkpoint
+        self.best_pred = 0.0
+        if args.resume is not None:
+            if not os.path.isfile(args.resume):
+                raise RuntimeError("=> no checkpoint found at '{}'".format(args.resume))
+            checkpoint = torch.load(args.resume)
+            args.start_epoch = checkpoint['epoch']
+
+            # if the weights are wrapped in module object we have to clean it
+            if args.clean_module:
+                self.model.load_state_dict(checkpoint['state_dict'])
+                state_dict = checkpoint['state_dict']
+                new_state_dict = OrderedDict()
+                for k, v in state_dict.items():
+                    name = k[7:]  # remove 'module.' of dataparallel
+                    new_state_dict[name] = v
+                self.model.load_state_dict(new_state_dict)
+
+            else:
+                if (torch.cuda.device_count() > 1 or args.load_parallel):
+                    self.model.module.load_state_dict(checkpoint['state_dict'])
+                else:
+                    self.model.load_state_dict(checkpoint['state_dict'])
+
+            if not args.ft:
+                self.optimizer.load_state_dict(checkpoint['optimizer'])
+            self.best_pred = checkpoint['best_pred']
+            print("=> loaded checkpoint '{}' (epoch {})"
+                  .format(args.resume, checkpoint['epoch']))
+
+        # Clear start epoch if fine-tuning
+        if args.ft:
+            args.start_epoch = 0
+
 def main () :
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
     parser.add_argument('--backbone', type=str, default='resnet',
@@ -92,6 +168,10 @@ def main () :
                         choices=['search', 'train'])
     parser.add_argument('--load-parallel', type=int, default=0)
     parser.add_argument('--clean-module', type=int, default=0)
+    parser.add_argument('--workers', type=int, default=0,
+                        metavar='N', help='dataloader threads')
+    parser.add_argument('--base_size', type=int, default=320,
+                        help='base image size')
     parser.add_argument('--crop_size', type=int, default=320,
                         help='crop image size')
     parser.add_argument('--resize', type=int, default=512,
@@ -119,8 +199,6 @@ def main () :
 
     print ('architecture search results:',result_paths)
     print ('new cell structure:', genotype)
-
-
 
 if __name__ == '__main__' :
     main ()
