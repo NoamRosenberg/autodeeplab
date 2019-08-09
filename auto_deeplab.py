@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 import cell_level_search
 from genotypes import PRIMITIVES
-from genotypes import Genotype
 import torch.nn.functional as F
 from operations import *
 from decoding_formulas import Decoder
