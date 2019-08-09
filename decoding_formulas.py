@@ -274,30 +274,23 @@ class Decoder(object):
 
     def genotype_decode(self):
 
-        def _parse(weights):
+        def _parse(alphas, steps):
             gene = []
-            n = 2
             start = 0
-            for i in range(self._step):
+            n = 2
+            for i in range(steps):
                 end = start + n
-                W = weights[start:end].copy()
-                edges = sorted (range(i + 2), key=lambda x: -max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES.index('none')))[:2]
-                for j in edges:
-                    k_best = None
-                    for k in range(len(W[j])):
-                        if k != PRIMITIVES.index('none'):
-                            if k_best is None or W[j][k] > W[j][k_best]:
-                                k_best = k
-                    gene.append((PRIMITIVES[k_best], j))
+                edges = sorted(range(start, end), key=lambda x: -np.max(alphas[x,1:])) #ignore none value
+                top2edges = edges[:2]
+                for j in top2edges:
+                    best_op_index = np.argmax(alphas[j]) #this can include none op
+                    gene.append([j, best_op_index])
                 start = end
                 n += 1
-            return gene
-        gene_cell = _parse(F.softmax(self.alphas, dim=-1).data.cpu().numpy())
-        concat = range(2 + self.steps - self.block_multiplier, self.steps + 2)
-        genotype = Genotype(
-            cell=gene_cell, cell_concat=concat
-        )
+            return np.array(gene)
+        normalized_alphas = F.softmax(self.alphas, dim=-1).data.cpu().numpy()
+        gene_cell = _parse(normalized_alphas, self.steps)
 
-        return genotype
+        return gene_cell
 
 
