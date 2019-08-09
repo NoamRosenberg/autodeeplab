@@ -122,8 +122,13 @@ def get_new_network_cell() :
     print ('architecture search results:',network_path)
     print ('new cell structure:', genotype)
 
-    args.resume
-    np.save(network_path)
+    dir_name = os.path.dirname(args.resume)
+    network_path_filename = os.path.join(dir_name,'network_path')
+    genotype_filename = os.path.join(dir_name, 'genotype')
+    np.save(network_path_filename, network_path)
+    np.save(genotype_filename, genotype)
+
+    print('saved to :', dir_name)
 
 if __name__ == '__main__' :
     get_new_network_cell()
