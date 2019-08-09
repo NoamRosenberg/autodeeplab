@@ -1,4 +1,18 @@
+import argparse
+import os
+import numpy as np
+from tqdm import tqdm
 
+from mypath import Path
+from dataloaders import make_data_loader
+from modeling.sync_batchnorm.replicate import patch_replication_callback
+from modeling.deeplab import *
+from utils.loss import SegmentationLosses
+from utils.calculate_weights import calculate_weigths_labels
+from utils.lr_scheduler import LR_Scheduler
+from utils.saver import Saver
+from utils.summaries import TensorboardSummary
+from utils.metrics import Evaluator
 
 class trainNew(object):
     def __init__(self, args):
@@ -7,30 +21,48 @@ class trainNew(object):
         # Define Saver
         self.saver = Saver(args)
         self.saver.save_experiment_config()
+        # Define Tensorboard Summary
+        self.summary = TensorboardSummary(self.saver.experiment_dir)
+        self.writer = self.summary.create_summary()
 
+        # Define Dataloader
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
-        self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args,**kwargs)
-
-
-        weight = None
-        self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
+        self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
 
         # Define network
-        model = AutoDeeplab(num_classes=self.nclass, num_layers=12, criterion=self.criterion,
-                            filter_multiplier=self.args.filter_multiplier)
-        optimizer = torch.optim.SGD(
-            model.weight_parameters(),
-            args.lr,
-            momentum=args.momentum,
-            weight_decay=args.weight_decay
-        )
+        model = newModel(num_classes=self.nclass,
+                        backbone=args.backbone,
+                        output_stride=args.out_stride,
+                        sync_bn=args.sync_bn,
+                        freeze_bn=args.freeze_bn)
 
+        train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
+                        {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
+
+        # Define Optimizer
+        optimizer = torch.optim.SGD(train_params, momentum=args.momentum,
+                                    weight_decay=args.weight_decay, nesterov=args.nesterov)
+
+        # Define Criterion
+        # whether to use class balanced weights
+        if args.use_balanced_weights:
+            classes_weights_path = os.path.join(Path.db_root_dir(args.dataset), args.dataset + '_classes_weights.npy')
+            if os.path.isfile(classes_weights_path):
+                weight = np.load(classes_weights_path)
+            else:
+                weight = calculate_weigths_labels(args.dataset, self.train_loader, self.nclass)
+            weight = torch.from_numpy(weight.astype(np.float32))
+        else:
+            weight = None
+        self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
         self.model, self.optimizer = model, optimizer
+
         # Define Evaluator
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
-                                      args.epochs, len(self.train_loader), min_lr=args.min_lr)
+                                      args.epochs, len(self.train_loader))
+
         # TODO: Figure out if len(self.train_loader) should be devided by two ? in other module as well
         # Using cuda
         if args.cuda:
