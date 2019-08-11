@@ -31,11 +31,6 @@ print('cudnn version: {}'.format(torch.backends.cudnn.version()))
 
 class Trainer(object):
 
-    def fix_bn(self,m):
-        classname = m.__class__.__name__
-        if classname.find('BatchNorm') != -1:
-            m.eval().half()
-
     def __init__(self, args):
         self.args = args
 
@@ -78,21 +73,9 @@ class Trainer(object):
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
                                       args.epochs, len(self.train_loaderA), min_lr=args.min_lr)
 
-
         self.architect_optimizer = torch.optim.Adam(self.model.arch_parameters(),
                                                   lr=args.arch_lr, betas=(0.9, 0.999),
                                                   weight_decay=args.arch_weight_decay)
-
-
-        # for module in self.model.modules():
-        #     if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
-        #         # Hack to fix BN fprop without affine transformation
-        #         if module.weight is None:
-        #             module.weight = torch.nn.Parameter(torch.ones(module.running_var.shape, dtype=module.running_var.dtype,
-        #                                                     device=module.running_var.device), requires_grad=False)
-        #         if module.bias is None:
-        #             module.bias = torch.nn.Parameter(torch.zeros(module.running_var.shape, dtype=module.running_var.dtype,
-        #                                                    device=module.running_var.device), requires_grad=False)
 
         # Using cuda
         if args.cuda:
@@ -107,9 +90,6 @@ class Trainer(object):
 
             print('cuda finished')
 
-        # self.optimizer = FP16_Optimizer(self.optimizer,dynamic_loss_scale=True)
-
-
 
         # Using data parallel
         if args.cuda and len(self.args.gpu_ids) >1:
@@ -117,10 +97,6 @@ class Trainer(object):
             patch_replication_callback(self.model)
             print('training on multiple-GPUs')
             # self.model = apex.parallel.DistributedDataParallel(self.model)
-
-
-
-
 
         #checkpoint = torch.load(args.resume)
         #print('about to load state_dict')
@@ -166,7 +142,6 @@ class Trainer(object):
     def training(self, epoch):
         train_loss = 0.0
         self.model.train()
-        # self.model.apply(self.fix_bn)
         tbar = tqdm(self.train_loaderA)
         num_img_tr = len(self.train_loaderA)
         for i, sample in enumerate(tbar):
@@ -289,7 +264,9 @@ def main():
     parser.add_argument('--dataset', type=str, default='kd',
                         choices=['pascal', 'coco', 'cityscapes', 'kd'],
                         help='dataset name (default: pascal)')
-
+    parser.add_argument('--autodeeplab', type=str, default='search',
+                        choices=['search', 'train'],
+                        help='dataset name (default: pascal)')
     parser.add_argument('--use-sbd', action='store_true', default=False,
                         help='whether to use SBD dataset (default: True)')
     parser.add_argument('--load-parallel', type=int, default=0)
