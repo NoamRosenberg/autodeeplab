@@ -13,10 +13,10 @@ from utils.lr_scheduler import LR_Scheduler
 from utils.saver import Saver
 from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
-from new_model import newmodel
+from new_model import newModel
 
 class trainNew(object):
-    def __init__(self, args, new_network_arch, new_cell_arch):
+    def __init__(self, args):
         self.args = args
 
         # Define Saver
@@ -30,14 +30,21 @@ class trainNew(object):
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
 
+        cell_path = os.path.join(args.saved_arch_path, 'genotype.npy')
+        network_path_space = os.path.join(args.saved_arch_path, 'network_path_space.npy')
+
+        new_cell_arch = np.load(cell_path)
+        new_network_arch = np.load(network_path_space)
+
         # Define network
-        model = newModel(new_network= new_network_arch,
-                        new_cell = new_cell_arch,
-                        num_classes=self.nclass,
-                        backbone=args.backbone,
-                        output_stride=args.out_stride,
-                        sync_bn=args.sync_bn,
-                        freeze_bn=args.freeze_bn)
+        model = newModel(network_arch= new_network_arch,
+                         cell_arch = new_cell_arch,
+                         num_classes=self.nclass,
+                         num_layers=12)
+#                        output_stride=args.out_stride,
+#                        sync_bn=args.sync_bn,
+#                        freeze_bn=args.freeze_bn)
+        # TODO: look into these
 
         train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
                         {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
@@ -254,6 +261,8 @@ def main():
     # checking point
     parser.add_argument('--resume', type=str, default=None,
                         help='put the path to resuming file if needed')
+    parser.add_argument('--saved-arch-path', type=str, default=None,
+                        help='put the path to alphas and betas')
     parser.add_argument('--checkname', type=str, default=None,
                         help='set the checkpoint name')
     # finetuning pre-trained models
@@ -264,6 +273,9 @@ def main():
                         help='evaluuation interval (default: 1)')
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
+    parser.add_argument('--filter_multiplier', type=int, default=20)
+    parser.add_argument('--autodeeplab', type=str, default='train',
+                        choices=['search', 'train'])
 
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
