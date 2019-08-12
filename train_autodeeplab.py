@@ -226,8 +226,7 @@ def main():
                         choices=['pascal', 'coco', 'cityscapes', 'kd'],
                         help='dataset name (default: pascal)')
     parser.add_argument('--autodeeplab', type=str, default='search',
-                        choices=['search', 'train'],
-                        help='dataset name (default: pascal)')
+                        choices=['search', 'train'])
     parser.add_argument('--use-sbd', action='store_true', default=False,
                         help='whether to use SBD dataset (default: True)')
     parser.add_argument('--load-parallel', type=int, default=0)
