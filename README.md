@@ -17,7 +17,7 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 
 From the auto-deeplab paper |  Our half-sized model takes twice as long to train
 :---------------------------------------:|:-------------------------:
-![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours.png)
+![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours2.png)
 
 ***For half-sized model, set --filter_multiplier 4 --resize 358 --crop_size 224***
 <br/><br/>
