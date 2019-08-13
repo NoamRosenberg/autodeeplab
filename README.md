@@ -26,11 +26,14 @@ From the auto-deeplab paper |  Our half-sized model takes twice as long to train
 ## Training Proceedure
 
 **All together there are 3 stages:**
+
 1. Architecture Search - Here you will train one large relaxed architecture that is meant to represent many discreet smaller architectures woven together.
 
 2. Decode - Once you've finished the architecture search, load your large relaxed architecture and decode it to find your optimal architecture.
 
 3. Re-train - Once you have a decoded and poses a final description of your optimal model, use it to build and train your new optimal model
+
+<br/><br/>
 
 ## Architecture Search
 
