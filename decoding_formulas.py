@@ -33,7 +33,7 @@ class Decoder(object):
         self.steps = steps
 
     def viterbi_decode(self):
-        #TODO: consider if to set single path probabilities to a third or some other value other
+        #TODO: consider if to set single path probabilities to a third or half some other value other
         #TODO: than one in order not to bias the path decodicings
         #remember best paths
         paths_space = torch.zeros(self.network_space.shape)
