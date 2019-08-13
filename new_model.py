@@ -41,7 +41,7 @@ class Cell(nn.Module):
                 self.pre_preprocess = FactorizedIncrease(self.C_prev_prev, self.C_out)
             elif prev_downup == 2:
                 self.pre_preprocess = DoubleFactorizedIncrease(self.C_prev_prev, self.C_out)
-                
+
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
@@ -52,6 +52,9 @@ class Cell(nn.Module):
             self._ops.append(op)
 
         self.ReLUConvBN = ReLUConvBN (self.C_in, self.C_out, 1, 1, 0)
+
+    def forward(self):
+
 
 class newModel (nn.Module) :
     def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion = None, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=Cell):
@@ -141,6 +144,9 @@ class newModel (nn.Module) :
 
             self.cells += [_cell]
 
+        last_level_option = torch.sum(network_arch[-1], dim=1)
+        last_level = torch.argmax(last_level_option).item()
+        aspp_input_channels
         self.aspp_4 = nn.Sequential (
             ASPP (self._block_multiplier * self._filter_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
         )
@@ -154,3 +160,4 @@ class newModel (nn.Module) :
             ASPP (self._block_multiplier * self._filter_multiplier * 8, self._num_classes, 3, 3) #96 / 32
         )
 
+    def forward(self):
