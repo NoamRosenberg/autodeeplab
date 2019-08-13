@@ -28,29 +28,36 @@ From the auto-deeplab paper |  Our half-sized model takes twice as long to train
 
 ***Begin Architecture Search***
 
-**Start training**
+**Start Training**
 ```
 CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes
 ```
 
-**Resume training**
+**Resume Training**
 ```
 CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
 
-**Multi-GPU training**
+**Multi-GPU Training**
 ```
 CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
 ```
 
-***Once you are done training it's time to decode the search space, and find the optimal model for your data and task.***
+***Once you are done training it's time to decode the search space and find your new architecture***
 
 
-**Load and decode model**
+**Load and Decode**
 ```
 CUDA_VISIBLE_DEVICES=0 python decode_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
 
+***Once the decoding stage is finished its time to load your new architecture and train your new optimal model***
+
+
+**Build and Train new model**
+```
+CUDA_VISIBLE_DEVICES=0 python train_new_model.py --dataset cityscapes --saved_arch_path /AutoDeeplabpathtosaveddecodings/
+```
 ## Requirements
 
 * Pytorch version 1.1
