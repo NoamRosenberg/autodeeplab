@@ -146,18 +146,10 @@ class newModel (nn.Module) :
 
         last_level_option = torch.sum(network_arch[-1], dim=1)
         last_level = torch.argmax(last_level_option).item()
-        aspp_input_channels
+        aspp_num_input_channels = self._block_multiplier * self._filter_multiplier * filter_param_dict[last_level]
+        atrous_rate = 96 / (filter_param_dict[last_level] * 4)
         self.aspp_4 = nn.Sequential (
-            ASPP (self._block_multiplier * self._filter_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
-        )
-        self.aspp_8 = nn.Sequential (
-            ASPP (self._block_multiplier * self._filter_multiplier * 2, self._num_classes, 12, 12) #96 / 8
-        )
-        self.aspp_16 = nn.Sequential (
-            ASPP (self._block_multiplier * self._filter_multiplier * 4, self._num_classes, 6, 6) #96 / 16
-        )
-        self.aspp_32 = nn.Sequential (
-            ASPP (self._block_multiplier * self._filter_multiplier * 8, self._num_classes, 3, 3) #96 / 32
+            ASPP (aspp_num_input_channels, self._num_classes, atrous_rate, atrous_rate) #96 / 4 as in the paper
         )
 
     def forward(self):
