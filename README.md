@@ -24,7 +24,7 @@ From the auto-deeplab paper |  Our half-sized model takes twice as long to train
 ***For full-sized model, leave parameters to their default setting***
 <br/><br/>
 
-## Training 
+## Architecture Search
 
 ***Begin Architecture Search***
 
@@ -43,16 +43,16 @@ CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume
 CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
 ```
 
-***Once you are done training it's time to decode the search space and find your new architecture***
+##Load Decode and Train
+
+***Now that you're done training the search algorithm, it's time to decode the search space and find your new optimal architecture. 
+After that just build your new model and begin training it***
 
 
 **Load and Decode**
 ```
 CUDA_VISIBLE_DEVICES=0 python decode_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
-
-***Once the decoding stage is finished its time to load your new architecture and train your new optimal model***
-
 
 **Build and Train new model**
 ```
