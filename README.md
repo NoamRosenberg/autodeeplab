@@ -43,7 +43,7 @@ CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume
 CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
 ```
 
-##Load Decode and Train
+## Load, Decode and Train
 
 ***Now that you're done training the search algorithm, it's time to decode the search space and find your new optimal architecture. 
 After that just build your new model and begin training it***
