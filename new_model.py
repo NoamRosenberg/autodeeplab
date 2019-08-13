@@ -16,7 +16,7 @@ class Cell(nn.Module):
                  prev_downup, downup_sample):
 
         super(Cell, self).__init__()
-
+        self.cell_arch = cell_arch
 
         self.C_in = block_multiplier * filter_multiplier * block_multiplier
         self.C_out = filter_multiplier * block_multiplier
@@ -24,11 +24,11 @@ class Cell(nn.Module):
         self.C_prev_prev = block_multiplier * prev_prev_fmultiplier
 
         if downup_sample == -1:
-            self.preprocess_down = FactorizedReduce(self.C_prev, self.C_out, affine=False)
+            self.preprocess = FactorizedReduce(self.C_prev, self.C_out, affine=False)
         elif downup_sample == 0:
-            self.preprocess_same = ReLUConvBN(self.C_prev, self.C_out, 1, 1, 0, affine=False)
+            self.preprocess = ReLUConvBN(self.C_prev, self.C_out, 1, 1, 0, affine=False)
         elif downup_sample == 1:
-            self.preprocess_up = FactorizedIncrease(self.C_prev, self.C_out)
+            self.preprocess = FactorizedIncrease(self.C_prev, self.C_out)
 
         if prev_downup is not None:
             if prev_downup == -2:
@@ -46,15 +46,34 @@ class Cell(nn.Module):
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
 
-        for x in cell_arch:
+        for x in self.cell_arch:
             primitive = PRIMITIVES[x[1]]
             op = OPS[primitive](self.C_out,stride=1,affine=False)
             self._ops.append(op)
 
         self.ReLUConvBN = ReLUConvBN (self.C_in, self.C_out, 1, 1, 0)
 
-    def forward(self):
+    def forward(self,  prev_prev_input, prev_input):
+        self.cell_arch
+        s0 = self.preprocess(prev_input)
+        s1 = self.pre_preprocess(prev_prev_input)
+        states = [s0, s1]
+        offset = 0
+        ops_index = 0
+        for i in range(self._steps):
+            new_states = []
+            for j, h in enumerate(states):
+                branch_index = offset + j
+                if branch_index in self.cell_arch[:,0]:
+                    new_state = self._ops[ops_index](h)
+                    new_states.append(new_state)
+                    ops_index += 1
+                s = sum(new_states)
+                offset += len(states)
+                states.append(s)
 
+        concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
+        return self.ReLUConvBN (concat_feature)
 
 class newModel (nn.Module) :
     def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion = None, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=Cell):
