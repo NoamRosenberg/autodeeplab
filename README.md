@@ -23,6 +23,14 @@ From the auto-deeplab paper |  Our half-sized model takes twice as long to train
 <br/><br/>
 ***For full-sized model, leave parameters to their default setting***
 <br/><br/>
+## Training Proceedure
+
+**All together there are 3 stages:**
+1. Architecture Search - Here you will train one large relaxed architecture that is meant to represent many discreet smaller architectures woven together.
+
+2. Decode - Once you've finished the architecture search, load your large relaxed architecture and decode it to find your optimal architecture.
+
+3. Re-train - Once you have a decoded and poses a final description of your optimal model, use it to build and train your new optimal model
 
 ## Architecture Search
 
@@ -43,7 +51,7 @@ CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume
 CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
 ```
 
-## Load, Decode and Train
+## Load, Decode and Re-train
 
 ***Now that you're done training the search algorithm, it's time to decode the search space and find your new optimal architecture. 
 After that just build your new model and begin training it***
