@@ -23,11 +23,11 @@ try:
 except ModuleNotFoundError:
     APEX_AVAILABLE = False
 
+
 print('working with pytorch version {}'.format(torch.__version__))
 print('with cuda version {}'.format(torch.version.cuda))
 print('cudnn enabled: {}'.format(torch.backends.cudnn.enabled))
 print('cudnn version: {}'.format(torch.backends.cudnn.version()))
-
 
 class Trainer(object):
 
@@ -41,6 +41,7 @@ class Trainer(object):
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
         self.use_amp = True if APEX_AVAILABLE else False
+        self.opt_level = args.opt_level
 
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
         self.train_loaderA, self.train_loaderB, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
@@ -66,16 +67,18 @@ class Trainer(object):
                 weight_decay=args.weight_decay
             )
 
+
         self.model, self.optimizer = model, optimizer
+
+        self.architect_optimizer = torch.optim.Adam(self.model.arch_parameters(),
+                                                    lr=args.arch_lr, betas=(0.9, 0.999),
+                                                    weight_decay=args.arch_weight_decay)
+
         # Define Evaluator
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
                                       args.epochs, len(self.train_loaderA), min_lr=args.min_lr)
-
-        self.architect_optimizer = torch.optim.Adam(self.model.arch_parameters(),
-                                                  lr=args.arch_lr, betas=(0.9, 0.999),
-                                                  weight_decay=args.arch_weight_decay)
 
         # Using cuda
         if args.cuda:
@@ -84,19 +87,37 @@ class Trainer(object):
 
         # mixed precision
         if self.use_amp and args.cuda:
+            keep_batchnorm_fp32 = True if (self.opt_level == 'O2' or self.opt_level == 'O3') else None
+
+            # fix for current pytorch version with opt_level 'O1'
+            if self.opt_level == 'O1' and torch.__version__ < '1.3':
+                for module in self.model.modules():
+                    if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
+                        # Hack to fix BN fprop without affine transformation
+                        if module.weight is None:
+                            module.weight = torch.nn.Parameter(
+                                torch.ones(module.running_var.shape, dtype=module.running_var.dtype,
+                                           device=module.running_var.device), requires_grad=False)
+                        if module.bias is None:
+                            module.bias = torch.nn.Parameter(
+                                torch.zeros(module.running_var.shape, dtype=module.running_var.dtype,
+                                            device=module.running_var.device), requires_grad=False)
+
+            print(keep_batchnorm_fp32)
             self.model, [self.optimizer, self.architect_optimizer] = amp.initialize(
-                self.model, [self.optimizer, self.architect_optimizer], opt_level="O2",
-                keep_batchnorm_fp32=True, loss_scale="dynamic")
+                self.model, [self.optimizer, self.architect_optimizer], opt_level=self.opt_level,
+                keep_batchnorm_fp32=keep_batchnorm_fp32, loss_scale="dynamic")
 
             print('cuda finished')
 
 
         # Using data parallel
         if args.cuda and len(self.args.gpu_ids) >1:
+            if self.opt_level == 'O2' or self.opt_level == 'O3':
+                print('currently cannot run with nn.DataParallel and optimization level', self.opt_level)
             self.model = torch.nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
             patch_replication_callback(self.model)
             print('training on multiple-GPUs')
-            # self.model = apex.parallel.DistributedDataParallel(self.model)
 
         #checkpoint = torch.load(args.resume)
         #print('about to load state_dict')
@@ -259,6 +280,9 @@ def main():
     parser.add_argument('--backbone', type=str, default='resnet',
                         choices=['resnet', 'xception', 'drn', 'mobilenet'],
                         help='backbone name (default: resnet)')
+    parser.add_argument('--opt_level', type=str, default='O1',
+                        choices=['O0', 'O1', 'O2', 'O3'],
+                        help='opt level for half percision training (default: 01)')
     parser.add_argument('--out-stride', type=int, default=16,
                         help='network output stride (default: 8)')
     parser.add_argument('--dataset', type=str, default='kd',
