@@ -154,7 +154,8 @@ class AutoDeeplab (nn.Module) :
 
 
     def forward (self, x) :
-
+        #TODO: GET RID OF THESE LISTS, we dont need to keep everything.
+        #TODO: Is this the reason for the memory issue ?
         self.level_2 = []
         self.level_4 = []
         self.level_8 = []
