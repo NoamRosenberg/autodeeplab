@@ -106,9 +106,8 @@ class Cell(nn.Module):
                         continue
                     new_state = self._ops[branch_index](h, n_alphas[branch_index])
                     new_states.append(new_state)
-                    #assert h!=new_state!=0
-                s = sum(new_states)
 
+                s = sum(new_states)
                 offset += len(states)
                 states.append(s)
 

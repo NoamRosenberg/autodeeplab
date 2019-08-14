@@ -167,8 +167,14 @@ class newModel (nn.Module) :
         last_level = torch.argmax(last_level_option).item()
         aspp_num_input_channels = self._block_multiplier * self._filter_multiplier * filter_param_dict[last_level]
         atrous_rate = 96 / (filter_param_dict[last_level] * 4)
-        self.aspp_4 = nn.Sequential (
-            ASPP (aspp_num_input_channels, self._num_classes, atrous_rate, atrous_rate) #96 / 4 as in the paper
-        )
+        self.aspp = ASPP (aspp_num_input_channels, self._num_classes, atrous_rate, atrous_rate) #96 / 4 as in the paper
 
-    def forward(self):
+
+    def forward(self, x):
+        x = self.stem0 (x)
+        x = self.stem1 (x)
+        x = self.stem2 (x)
+
+        for i range(self._num_layers):
+            if i = 0
+            self.cells[i](x)
