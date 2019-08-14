@@ -43,6 +43,9 @@ class Cell(nn.Module):
             self.preprocess_up = FactorizedIncrease(self.C_prev_up, self.C_out)
 
 
+        if prev_prev_fmultiplier != -1 :
+            self.pre_preprocess = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
+            
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
@@ -70,7 +73,7 @@ class Cell(nn.Module):
             s1_up = self.preprocess_up(s1_up)
         all_states = []
         if s0 is not None :
-
+            s0 = self.pre_preprocess(s0)
             if s1_down is not None:
                 states_down = [s0, s1_down]
                 all_states.append(states_down)
