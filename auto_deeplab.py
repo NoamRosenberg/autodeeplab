@@ -38,103 +38,73 @@ class AutoDeeplab (nn.Module) :
 
         #C_prev_prev = 64
         intitial_fm = C_initial / self._block_multiplier
-        for i in range (self._num_layers) :
+
+        ### init the self.cells array
+
+        # layer == 0:
+
+        self.cells += [cell (self._step, self._block_multiplier, -1,
+                             None, intitial_fm, None, self._filter_multiplier)]
+        self.cells += [cell (self._step, self._block_multiplier, -1,
+                             intitial_fm, None, None, self._filter_multiplier * 2)]
+
+        # layer == 1:
+
+        self.cells += [cell (self._step, self._block_multiplier, intitial_fm,
+                             None, self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier)]
+        self.cells += [cell (self._step, self._block_multiplier, -1,
+                             self._filter_multiplier, self._filter_multiplier * 2, None, self._filter_multiplier * 2)]
+        self.cells += [cell (self._step, self._block_multiplier, -1,
+                             self._filter_multiplier * 2, None, None, self._filter_multiplier * 4)]
+
+        # layer == 2:
+
+        self.cells += [cell (self._step, self._block_multiplier, self._filter_multiplier,
+                              None, self._filter_multiplier, self._filter_multiplier * 2,
+                              self._filter_multiplier)]
+        self.cells += [cell (self._step, self._block_multiplier, self._filter_multiplier * 2,
+                              self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4,
+                              self._filter_multiplier * 2)]
+        self.cells += [cell (self._step, self._block_multiplier, -1,
+                              self._filter_multiplier * 2, self._filter_multiplier * 4, None,
+                              self._filter_multiplier * 4)]
+        self.cells += [cell (self._step, self._block_multiplier, -1,
+                              self._filter_multiplier * 4, None, None,
+                              self._filter_multiplier * 8)]
+
+        # layer == 3:
+
+        self.cells += [cell (self._step, self._block_multiplier, self._filter_multiplier,
+                              None, self._filter_multiplier, self._filter_multiplier * 2,
+                              self._filter_multiplier)]
+        self.cells += [cell (self._step, self._block_multiplier, self._filter_multiplier * 2,
+                              self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4,
+                              self._filter_multiplier * 2)]
+        self.cells += [cell (self._step, self._block_multiplier, self._filter_multiplier * 4,
+                              self._filter_multiplier * 2, self._filter_multiplier * 4, self._filter_multiplier * 8,
+                              self._filter_multiplier * 4)]
+        self.cells += [cell (self._step, self._block_multiplier, -1,
+                              self._filter_multiplier * 4, self._filter_multiplier * 8, None,
+                              self._filter_multiplier * 8)]
+
+        # layer > 3:
+
+        self.cells += [cell(self._step, self._block_multiplier, self._filter_multiplier,
+                            None, self._filter_multiplier, self._filter_multiplier * 2,
+                            self._filter_multiplier)]
+        self.cells += [cell(self._step, self._block_multiplier, self._filter_multiplier * 2,
+                            self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4,
+                            self._filter_multiplier * 2)]
+        self.cells += [cell(self._step, self._block_multiplier, self._filter_multiplier * 4,
+                            self._filter_multiplier * 2, self._filter_multiplier * 4, self._filter_multiplier * 8,
+                            self._filter_multiplier * 4)]
+        self.cells += [cell(self._step, self._block_multiplier, self._filter_multiplier * 8,
+                            self._filter_multiplier * 4, self._filter_multiplier * 8, None,
+                            self._filter_multiplier * 8)]
+
+        # for i in range (4, self._num_layers) :
         # def __init__(self, steps, multiplier, C_prev_prev, C_initial, C, rate) : rate = 0 , 1, 2  reduce rate
 
-            if i == 0 :
-                cell1 = cell (self._step, self._block_multiplier, -1,
-                              None, intitial_fm, None,
-                              self._filter_multiplier)
-                cell2 = cell (self._step, self._block_multiplier, -1,
-                              intitial_fm, None, None,
-                              self._filter_multiplier * 2)
-                self.cells += [cell1]
-                self.cells += [cell2]
-            elif i == 1 :
-                cell1 = cell (self._step, self._block_multiplier, intitial_fm,
-                              None, self._filter_multiplier, self._filter_multiplier * 2,
-                              self._filter_multiplier)
-
-                cell2 = cell (self._step, self._block_multiplier, -1,
-                              self._filter_multiplier, self._filter_multiplier * 2, None,
-                              self._filter_multiplier * 2)
-
-                cell3 = cell (self._step, self._block_multiplier, -1,
-                              self._filter_multiplier * 2, None, None,
-                              self._filter_multiplier * 4)
-
-                self.cells += [cell1]
-                self.cells += [cell2]
-                self.cells += [cell3]
-
-            elif i == 2 :
-                cell1 = cell (self._step, self._block_multiplier, self._filter_multiplier,
-                              None, self._filter_multiplier, self._filter_multiplier * 2,
-                              self._filter_multiplier)
-
-                cell2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2,
-                              self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4,
-                              self._filter_multiplier * 2)
-
-                cell3 = cell (self._step, self._block_multiplier, -1,
-                              self._filter_multiplier * 2, self._filter_multiplier * 4, None,
-                              self._filter_multiplier * 4)
-
-                cell4 = cell (self._step, self._block_multiplier, -1,
-                              self._filter_multiplier * 4, None, None,
-                              self._filter_multiplier * 8)
-
-                self.cells += [cell1]
-                self.cells += [cell2]
-                self.cells += [cell3]
-                self.cells += [cell4]
-
-
-
-            elif i == 3 :
-                cell1 = cell (self._step, self._block_multiplier, self._filter_multiplier,
-                              None, self._filter_multiplier, self._filter_multiplier * 2,
-                              self._filter_multiplier)
-
-                cell2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2,
-                              self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4,
-                              self._filter_multiplier * 2)
-
-                cell3 = cell (self._step, self._block_multiplier, self._filter_multiplier * 4,
-                              self._filter_multiplier * 2, self._filter_multiplier * 4, self._filter_multiplier * 8,
-                              self._filter_multiplier * 4)
-
-
-                cell4 = cell (self._step, self._block_multiplier, -1,
-                              self._filter_multiplier * 4, self._filter_multiplier * 8, None,
-                              self._filter_multiplier * 8)
-
-                self.cells += [cell1]
-                self.cells += [cell2]
-                self.cells += [cell3]
-                self.cells += [cell4]
-
-            else :
-                cell1 = cell (self._step, self._block_multiplier, self._filter_multiplier,
-                                None, self._filter_multiplier, self._filter_multiplier * 2,
-                                self._filter_multiplier)
-
-                cell2 = cell (self._step, self._block_multiplier, self._filter_multiplier * 2,
-                              self._filter_multiplier, self._filter_multiplier * 2, self._filter_multiplier * 4,
-                              self._filter_multiplier * 2)
-
-                cell3 = cell (self._step, self._block_multiplier, self._filter_multiplier * 4,
-                                self._filter_multiplier * 2, self._filter_multiplier * 4, self._filter_multiplier * 8,
-                                self._filter_multiplier * 4)
-
-                cell4 = cell (self._step, self._block_multiplier, self._filter_multiplier * 8,
-                                self._filter_multiplier * 4, self._filter_multiplier * 8, None,
-                                self._filter_multiplier * 8)
-
-                self.cells += [cell1]
-                self.cells += [cell2]
-                self.cells += [cell3]
-                self.cells += [cell4]
 
         self.aspp_4 = nn.Sequential (
             ASPP (self._block_multiplier * self._filter_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
@@ -149,20 +119,16 @@ class AutoDeeplab (nn.Module) :
             ASPP (self._block_multiplier * self._filter_multiplier * 8, self._num_classes, 3, 3) #96 / 32
         )
 
-
-
     def forward (self, x) :
         # self._init_level_arr (x)
-        self.level_2 = []
-        self.level_4 = []
-        self.level_8 = []
-        self.level_16 = []
-        self.level_32 = []
-        temp = self.stem0 (x)
-        self.level_2.append (self.stem1 (temp))
-        self.level_4.append (self.stem2 (self.level_2[-1]))
+        cell = cell_level_search.Cell
+        C_initial = 128
+        intitial_fm = C_initial / self._block_multiplier
 
-        count = 0
+        level_2_curr = self.stem1 (self.stem0 (x))
+        level_4_curr = self.stem2 (level_2_curr)
+
+        # del level_2_curr
 
         if torch.cuda.device_count() > 1:
             img_device = torch.device('cuda', x.get_device())
@@ -177,171 +143,236 @@ class AutoDeeplab (nn.Module) :
             normalized_betas8 = F.softmax (self.betas8, dim = -1)
             normalized_betas16 = F.softmax(self.betas16, dim=-1)
             normalized_top_betas = F.softmax(self.top_betas, dim=-1)
-        for layer in range (self._num_layers - 1) :
-
-            if layer == 0 :
-                level4_new, = self.cells[count] (None, None, self.level_4[-1], None, normalized_alphas)
-                count += 1
-                level8_new, = self.cells[count] (None, self.level_4[-1], None, None, normalized_alphas)
-                count += 1
-                self.level_4.append (level4_new)
-                self.level_8.append (level8_new)
-
-            elif layer == 1 :
-                level4_new_1, level4_new_2 = self.cells[count] (self.level_4[-2],
-                                                                None,
-                                                                self.level_4[-1],
-                                                                self.level_8[-1],
-                                                                normalized_alphas)
-                count += 1
-                level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
-
-                level8_new_1, level8_new_2 = self.cells[count] (None,
-                                                                self.level_4[-1],
-                                                                self.level_8[-1],
-                                                                None,
-                                                                normalized_alphas)
-                count += 1
-                level8_new = normalized_top_betas[layer][0] * level8_new_1 + normalized_top_betas[layer][1] * level8_new_2
-
-                level16_new, = self.cells[count] (None,
-                                                  self.level_8[-1],
-                                                  None,
-                                                  None,
-                                                  normalized_alphas)
-                level16_new = level16_new
-                count += 1
 
 
-                self.level_4.append (level4_new)
-                self.level_8.append (level8_new)
-                self.level_16.append (level16_new)
+        # layer == 0 :
 
-            elif layer == 2 :
-                level4_new_1, level4_new_2 = self.cells[count] (self.level_4[-2],
-                                                                None,
-                                                                self.level_4[-1],
-                                                                self.level_8[-1],
-                                                                normalized_alphas)
-                count += 1
-                level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
+        cell_curr = cell (self._step, self._block_multiplier, -1,
+                             None, intitial_fm, None, self._filter_multiplier)
+        level4_new, = self.cells[0] (None, None, level_4_curr, None, normalized_alphas)
+        level8_new, = self.cells[1] (None, level_4_curr, None, None, normalized_alphas)
 
-                level8_new_1, level8_new_2, level8_new_3 = self.cells[count] (self.level_8[-2],
-                                                                              self.level_4[-1],
-                                                                              self.level_8[-1],
-                                                                              self.level_16[-1],
-                                                                              normalized_alphas)
-                count += 1
-                level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
+        level_4_prev = level_4_curr
+        level_4_curr = level4_new
+        level_8_curr = level8_new
 
-                level16_new_1, level16_new_2 = self.cells[count] (None,
-                                                                  self.level_8[-1],
-                                                                  self.level_16[-1],
-                                                                  None,
-                                                                  normalized_alphas)
-                count += 1
-                level16_new = normalized_top_betas[layer][0] * level16_new_1 + normalized_top_betas[layer][1] * level16_new_2
+        # layer == 1 :
 
+        level4_new_1, level4_new_2 = self.cells[2] (level_4_prev,
+                                                        None,
+                                                        level_4_curr,
+                                                        level_8_curr,
+                                                        normalized_alphas)
 
-                level32_new, = self.cells[count] (None,
-                                                  self.level_16[-1],
-                                                  None,
-                                                  None,
-                                                  normalized_alphas)
-                level32_new = level32_new
-                count += 1
+        level4_new = normalized_bottom_betas[1][0] * level4_new_1 + normalized_bottom_betas[1][1] * level4_new_2
 
-                self.level_4.append (level4_new)
-                self.level_8.append (level8_new)
-                self.level_16.append (level16_new)
-                self.level_32.append (level32_new)
+        # del level4_new_1
+        # del level4_new_2
 
-            elif layer == 3 :
-                level4_new_1, level4_new_2 = self.cells[count] (self.level_4[-2],
-                                                                None,
-                                                                self.level_4[-1],
-                                                                self.level_8[-1],
-                                                                normalized_alphas)
-                count += 1
-                level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
+        level8_new_1, level8_new_2 = self.cells[3] (None,
+                                                        level_4_curr,
+                                                        level_8_curr,
+                                                        None,
+                                                        normalized_alphas)
 
-                level8_new_1, level8_new_2, level8_new_3 = self.cells[count] (self.level_8[-2],
-                                                                              self.level_4[-1],
-                                                                              self.level_8[-1],
-                                                                              self.level_16[-1],
-                                                                              normalized_alphas)
-                count += 1
-                level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
+        level8_new = normalized_top_betas[1][0] * level8_new_1 + normalized_top_betas[1][1] * level8_new_2
 
-                level16_new_1, level16_new_2, level16_new_3 = self.cells[count] (self.level_16[-2],
-                                                                                 self.level_8[-1],
-                                                                                 self.level_16[-1],
-                                                                                 self.level_32[-1],
-                                                                                 normalized_alphas)
-                count += 1
-                level16_new = normalized_betas16[layer - 2][0] * level16_new_1 + normalized_betas16[layer - 2][1] * level16_new_2 + normalized_betas16[layer - 2][2] * level16_new_3
+        # del level8_new_1
+        # del level8_new_2
 
+        level16_new, = self.cells[4] (None,
+                                          level_8_curr,
+                                          None,
+                                          None,
+                                          normalized_alphas)
+        # level16_new = level16_new
 
-                level32_new_1, level32_new_2 = self.cells[count] (None,
-                                                                  self.level_16[-1],
-                                                                  self.level_32[-1],
-                                                                  None,
-                                                                  normalized_alphas)
-                count += 1
-                level32_new = normalized_top_betas[layer][0] * level32_new_1 + normalized_top_betas[layer][1] * level32_new_2
+        level_4_prev = level_4_curr
+        level_4_curr = level4_new
 
+        level_8_prev = level_8_curr
+        level_8_curr = level8_new
 
-                self.level_4.append (level4_new)
-                self.level_8.append (level8_new)
-                self.level_16.append (level16_new)
-                self.level_32.append (level32_new)
+        level_16_curr = level16_new
 
+        # layer == 2 :
 
-            else :
-                level4_new_1, level4_new_2 = self.cells[count] (self.level_4[-2],
-                                                  None,
-                                                  self.level_4[-1],
-                                                  self.level_8[-1],
-                                                  normalized_alphas)
-                count += 1
-                level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
+        level4_new_1, level4_new_2 = self.cells[5] (level_4_prev,
+                                                        None,
+                                                        level_4_curr,
+                                                        level_8_curr,
+                                                        normalized_alphas)
 
-                level8_new_1, level8_new_2, level8_new_3 = self.cells[count] (self.level_8[-2],
-                                                                              self.level_4[-1],
-                                                                              self.level_8[-1],
-                                                                              self.level_16[-1],
-                                                                              normalized_alphas)
-                count += 1
+        level4_new = normalized_bottom_betas[2][0] * level4_new_1 + normalized_bottom_betas[2][1] * level4_new_2
 
-                level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
+        # del level4_new_1
+        # del level4_new_2
 
-                level16_new_1, layer16_new_2, layer16_new_3 = self.cells[count] (self.level_16[-2],
-                                                                                 self.level_8[-1],
-                                                                                 self.level_16[-1],
-                                                                                 self.level_32[-1],
-                                                                                 normalized_alphas)
-                count += 1
-                level16_new = normalized_betas16[layer - 2][0] * level16_new_1 + normalized_betas16[layer - 2][1] * level16_new_2 + normalized_betas16[layer - 2][2] * level16_new_3
+        level8_new_1, level8_new_2, level8_new_3 = self.cells[6] (level_8_prev,
+                                                                      level_4_curr,
+                                                                      level_8_curr,
+                                                                      level_16_curr,
+                                                                      normalized_alphas)
 
+        level8_new = normalized_betas8[2 - 1][0] * level8_new_1 + normalized_betas8[2 - 1][1] * level8_new_2 + normalized_betas8[2 - 1][2] * level8_new_3
 
-                level32_new_1, level32_new_2 = self.cells[count] (self.level_32[-2],
-                                                                  self.level_16[-1],
-                                                                  self.level_32[-1],
-                                                                  None,
-                                                                  normalized_alphas)
-                count += 1
-                level32_new = normalized_top_betas[layer][0] * level32_new_1 + normalized_top_betas[layer][1] * level32_new_2
+        # del level8_new_1
+        # del level8_new_2
+        # del level8_new_3
 
+        level16_new_1, level16_new_2 = self.cells[7] (None,
+                                                          level_8_curr,
+                                                          level_16_curr,
+                                                          None,
+                                                          normalized_alphas)
 
-                self.level_4.append (level4_new)
-                self.level_8.append (level8_new)
-                self.level_16.append (level16_new)
-                self.level_32.append (level32_new)
+        level16_new = normalized_top_betas[2][0] * level16_new_1 + normalized_top_betas[2][1] * level16_new_2
 
-        aspp_result_4 = self.aspp_4 (self.level_4[-1])
-        aspp_result_8 = self.aspp_8 (self.level_8[-1])
-        aspp_result_16 = self.aspp_16 (self.level_16[-1])
-        aspp_result_32 = self.aspp_32 (self.level_32[-1])
+        # del level16_new_1
+        # del level16_new_2
+
+        level32_new, = self.cells[8] (None,
+                                          level_16_curr,
+                                          None,
+                                          None,
+                                          normalized_alphas)
+
+        level_4_prev = level_4_curr
+        level_4_curr = level4_new
+
+        level_8_prev = level_8_curr
+        level_8_curr = level8_new
+
+        level_16_prev = level_16_curr
+        level_16_curr = level16_new
+
+        level_32_curr = level32_new
+
+        # layer == 3 :
+
+        level4_new_1, level4_new_2 = self.cells[9] (level_4_prev,
+                                                        None,
+                                                        level_4_curr,
+                                                        level_8_curr,
+                                                        normalized_alphas)
+
+        level4_new = normalized_bottom_betas[3][0] * level4_new_1 + normalized_bottom_betas[3][1] * level4_new_2
+
+        # del level4_new_1
+        # del level4_new_2
+
+        level8_new_1, level8_new_2, level8_new_3 = self.cells[10] (level_8_prev,
+                                                                      level_4_curr,
+                                                                      level_8_curr,
+                                                                      level_16_curr,
+                                                                      normalized_alphas)
+
+        level8_new = normalized_betas8[3 - 1][0] * level8_new_1 + normalized_betas8[3 - 1][1] * level8_new_2 + normalized_betas8[3 - 1][2] * level8_new_3
+
+        # del level8_new_1
+        # del level8_new_2
+        # del level8_new_3
+
+        level16_new_1, level16_new_2, level16_new_3 = self.cells[11] (level_16_prev,
+                                                                         level_8_curr,
+                                                                         level_16_curr,
+                                                                         level_32_curr,
+                                                                         normalized_alphas)
+
+        level16_new = normalized_betas16[3 - 2][0] * level16_new_1 + normalized_betas16[3 - 2][1] * level16_new_2 + normalized_betas16[3 - 2][2] * level16_new_3
+
+        # del level16_new_1
+        # del level16_new_2
+        # del level16_new_3
+
+        level32_new_1, level32_new_2 = self.cells[12] (None,
+                                                          level_16_curr,
+                                                          level_32_curr,
+                                                          None,
+                                                          normalized_alphas)
+
+        level32_new = normalized_top_betas[3][0] * level32_new_1 + normalized_top_betas[3][1] * level32_new_2
+
+        # del level32_new_1
+        # del level32_new_2
+
+        level_4_prev = level_4_curr
+        level_4_curr = level4_new
+
+        level_8_prev = level_8_curr
+        level_8_curr = level8_new
+
+        level_16_prev = level_16_curr
+        level_16_curr = level16_new
+
+        level_32_prev = level_32_curr
+        level_32_curr = level32_new
+
+        for layer in range(4, self._num_layers - 1):
+
+            level4_new_1, level4_new_2 = self.cells[13] (level_4_prev,
+                                              None,
+                                              level_4_curr,
+                                              level_8_curr,
+                                              normalized_alphas)
+
+            level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
+
+            # del level4_new_1
+            # del level4_new_2
+
+            level8_new_1, level8_new_2, level8_new_3 = self.cells[14] (level_8_prev,
+                                                                          level_4_curr,
+                                                                          level_8_curr,
+                                                                          level_16_curr,
+                                                                          normalized_alphas)
+
+            level8_new = normalized_betas8[layer - 1][0] * level8_new_1 + normalized_betas8[layer - 1][1] * level8_new_2 + normalized_betas8[layer - 1][2] * level8_new_3
+
+            # del level8_new_1
+            # del level8_new_2
+            # del level8_new_3
+
+            level16_new_1, level16_new_2, level16_new_3 = self.cells[15] (level_16_prev,
+                                                                             level_8_curr,
+                                                                             level_16_curr,
+                                                                             level_32_curr,
+                                                                             normalized_alphas)
+
+            level16_new = normalized_betas16[layer - 2][0] * level16_new_1 + normalized_betas16[layer - 2][1] * level16_new_2 + normalized_betas16[layer - 2][2] * level16_new_3
+
+            # del level16_new_1
+            # del level16_new_2
+            # del level16_new_3
+
+            level32_new_1, level32_new_2 = self.cells[16] (level_32_prev,
+                                                              level_16_curr,
+                                                              level_32_curr,
+                                                              None,
+                                                              normalized_alphas)
+
+            level32_new = normalized_top_betas[layer][0] * level32_new_1 + normalized_top_betas[layer][1] * level32_new_2
+
+            # del level32_new_1
+            # del level32_new_2
+
+            level_4_prev = level_4_curr
+            level_4_curr = level4_new
+
+            level_8_prev = level_8_curr
+            level_8_curr = level8_new
+
+            level_16_prev = level_16_curr
+            level_16_curr = level16_new
+
+            level_32_prev = level_32_curr
+            level_32_curr = level32_new
+
+        aspp_result_4 = self.aspp_4 (level_4_curr)
+        aspp_result_8 = self.aspp_8 (level_8_curr)
+        aspp_result_16 = self.aspp_16 (level_16_curr)
+        aspp_result_32 = self.aspp_32 (level_32_curr)
+
         upsample = nn.Upsample(size=x.size()[2:], mode='bilinear', align_corners=True)
         aspp_result_4 = upsample (aspp_result_4)
         aspp_result_8 = upsample (aspp_result_8)
