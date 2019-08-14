@@ -45,10 +45,11 @@ class trainNew(object):
 #                        sync_bn=args.sync_bn,
 #                        freeze_bn=args.freeze_bn)
         # TODO: look into these
-
-        train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
-                        {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
-
+        # TODO: ALSO look into different param groups as done int deeplab below
+#        train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
+#                        {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
+#
+        train_params = [{'params': model.parameters(), 'lr': args.lr}]
         # Define Optimizer
         optimizer = torch.optim.SGD(train_params, momentum=args.momentum,
                                     weight_decay=args.weight_decay, nesterov=args.nesterov)
@@ -71,7 +72,7 @@ class trainNew(object):
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
-                                      args.epochs, len(self.train_loader))
+                                      args.epochs, len(self.train_loader)) #TODO: use min_lr ?
 
         # TODO: Figure out if len(self.train_loader) should be devided by two ? in other module as well
         # Using cuda
@@ -214,10 +215,10 @@ def main():
                         help='whether to use SBD dataset (default: True)')
     parser.add_argument('--workers', type=int, default=4,
                         metavar='N', help='dataloader threads')
-    parser.add_argument('--base-size', type=int, default=513,
-                        help='base image size')
-    parser.add_argument('--crop-size', type=int, default=513,
+    parser.add_argument('--crop_size', type=int, default=320,
                         help='crop image size')
+    parser.add_argument('--resize', type=int, default=512,
+                        help='resize image size')
     parser.add_argument('--sync-bn', type=bool, default=None,
                         help='whether to use sync bn (default: auto)')
     parser.add_argument('--freeze-bn', type=bool, default=False,
@@ -276,6 +277,8 @@ def main():
     parser.add_argument('--filter_multiplier', type=int, default=20)
     parser.add_argument('--autodeeplab', type=str, default='train',
                         choices=['search', 'train'])
+    parser.add_argument('--load-parallel', type=int, default=0)
+    parser.add_argument('--min_lr', type=float, default=0.001) #TODO: CHECK THAT THEY EVEN DO THIS FOR THE MODEL IN THE PAPER
 
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()

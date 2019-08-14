@@ -107,14 +107,14 @@ class newModel (nn.Module) :
             nn.ReLU ()
         )
         #C_prev_prev = 64
-        initial_fm = C_initial / self._block_multiplier
+        initial_fm = int(C_initial / self._block_multiplier)
         filter_param_dict = {0: 1, 1: 2, 2: 4, 3: 8}
         for i in range (self._num_layers) :
             if i==0:
                 level_option = torch.sum(self.network_arch[0], dim=1)
                 level = torch.argmax(level_option).item()
 
-                three_branch_options = torch.sum(network_arch[i], dim=0)
+                three_branch_options = torch.sum(self.network_arch[i], dim=0)
                 downup_sample = torch.argmax(three_branch_options).item() - 1
 
                 _cell = cell (self._step, self._block_multiplier, -1,
@@ -125,14 +125,14 @@ class newModel (nn.Module) :
 
 
             elif i==1:
-                level_option = torch.sum(network_arch[i], dim=1)
-                prev_level_option = torch.sum(network_arch[i-1], dim=1)
+                level_option = torch.sum(self.network_arch[i], dim=1)
+                prev_level_option = torch.sum(self.network_arch[i-1], dim=1)
                 level = torch.argmax(level_option).item()
                 prev_level = torch.argmax(prev_level_option).item()
 
-                three_branch_options = torch.sum(network_arch[i], dim=0)
+                three_branch_options = torch.sum(self.network_arch[i], dim=0)
                 downup_sample = torch.argmax(three_branch_options).item() - 1
-                prev_three_branch_options = torch.sum(network_arch[i-1], dim=0)
+                prev_three_branch_options = torch.sum(self.network_arch[i-1], dim=0)
                 prev_downup_sample = torch.argmax(prev_three_branch_options).item() - 1
                 total_downup = prev_downup_sample + downup_sample
 
@@ -144,16 +144,16 @@ class newModel (nn.Module) :
 
 
             else:
-                level_option = torch.sum(network_arch[i], dim=1)
-                prev_level_option = torch.sum(network_arch[i-1], dim=1)
-                prev_prev_level_option = torch.sum(network_arch[i-2], dim=1)
+                level_option = torch.sum(self.network_arch[i], dim=1)
+                prev_level_option = torch.sum(self.network_arch[i-1], dim=1)
+                prev_prev_level_option = torch.sum(self.network_arch[i-2], dim=1)
                 level = torch.argmax(level_option).item()
                 prev_level = torch.argmax(prev_level_option).item()
                 prev_prev_level = torch.argmax(prev_prev_level_option).item()
 
-                three_branch_options = torch.sum(network_arch[i], dim=0)
+                three_branch_options = torch.sum(self.network_arch[i], dim=0)
                 downup_sample = torch.argmax(three_branch_options).item() - 1
-                prev_three_branch_options = torch.sum(network_arch[i-1], dim=0)
+                prev_three_branch_options = torch.sum(self.network_arch[i-1], dim=0)
                 prev_downup_sample = torch.argmax(prev_three_branch_options).item() - 1
                 total_downup = prev_downup_sample + downup_sample
 
@@ -165,7 +165,7 @@ class newModel (nn.Module) :
 
             self.cells += [_cell]
 
-        last_level_option = torch.sum(network_arch[-1], dim=1)
+        last_level_option = torch.sum(self.network_arch[-1], dim=1)
         last_level = torch.argmax(last_level_option).item()
         aspp_num_input_channels = self._block_multiplier * self._filter_multiplier * filter_param_dict[last_level]
         atrous_rate = 96 / (filter_param_dict[last_level] * 4)
@@ -178,7 +178,7 @@ class newModel (nn.Module) :
         x = self.stem2 (x)
         two_last_inputs = (None, x)
         for i in range(self._num_layers):
-            two_last_inputs = self.cells[i](two_last_inputs[0], self.two_last_inputs[1])
+            two_last_inputs = self.cells[i](two_last_inputs[0], two_last_inputs[1])
 
         last_input = two_last_inputs[-1]
         aspp_result = self.aspp(last_input)
