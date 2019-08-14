@@ -45,7 +45,7 @@ class Cell(nn.Module):
 
         if prev_prev_fmultiplier != -1 :
             self.pre_preprocess = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
-            
+
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
