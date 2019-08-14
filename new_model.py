@@ -55,7 +55,7 @@ class Cell(nn.Module):
 
     def forward(self,  prev_prev_input, prev_input):
         self.cell_arch
-        if s0 is not None:
+        if prev_prev_input is not None:
             s0 = self.pre_preprocess(prev_prev_input)
         s1 = self.preprocess(prev_input)
 
@@ -75,7 +75,7 @@ class Cell(nn.Module):
                 states.append(s)
 
         concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
-        return self.ReLUConvBN (concat_feature)
+        return prev_input, self.ReLUConvBN (concat_feature)
 
 class newModel (nn.Module) :
     def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion = None, filter_multiplier = 8, block_multiplier = 5, step = 5, cell=Cell):
@@ -176,7 +176,13 @@ class newModel (nn.Module) :
         x = self.stem0 (x)
         x = self.stem1 (x)
         x = self.stem2 (x)
-
+        two_last_inputs = (None, x)
         for i in range(self._num_layers):
-            if i == 0:
-                self.cells[i](None, x)
+            two_last_inputs = self.cells[i](two_last_inputs[0], self.two_last_inputs[1])
+
+        last_input = two_last_inputs[-1]
+        aspp_result = self.aspp(last_input)
+        upsample = nn.Upsample(size=x.size()[2:], mode='bilinear', align_corners=True)
+        aspp_result = upsample(aspp_result)
+
+        return aspp_result
