@@ -55,8 +55,10 @@ class Cell(nn.Module):
 
     def forward(self,  prev_prev_input, prev_input):
         self.cell_arch
-        s0 = self.preprocess(prev_input)
-        s1 = self.pre_preprocess(prev_prev_input)
+        if s0 is not None:
+            s0 = self.pre_preprocess(prev_prev_input)
+        s1 = self.preprocess(prev_input)
+
         states = [s0, s1]
         offset = 0
         ops_index = 0
@@ -175,6 +177,6 @@ class newModel (nn.Module) :
         x = self.stem1 (x)
         x = self.stem2 (x)
 
-        for i range(self._num_layers):
-            if i = 0
-            self.cells[i](x)
+        for i in range(self._num_layers):
+            if i == 0:
+                self.cells[i](None, x)

@@ -154,7 +154,7 @@ class AutoDeeplab (nn.Module) :
 
 
     def forward (self, x) :
-        # self._init_level_arr (x)
+
         self.level_2 = []
         self.level_4 = []
         self.level_8 = []
