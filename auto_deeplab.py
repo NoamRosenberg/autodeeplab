@@ -161,7 +161,7 @@ class AutoDeeplab (nn.Module) :
         temp = self.stem0 (x)
         self.level_2.append (self.stem1 (temp))
         self.level_4.append (self.stem2 (self.level_2[-1]))
-
+    
         count = 0
 
         if torch.cuda.device_count() > 1:
