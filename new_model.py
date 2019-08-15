@@ -20,8 +20,8 @@ class Cell(nn.Module):
 
         self.C_in = block_multiplier * filter_multiplier * block_multiplier
         self.C_out = filter_multiplier * block_multiplier
-        self.C_prev = block_multiplier * prev_filter_multiplier
-        self.C_prev_prev = block_multiplier * prev_prev_fmultiplier
+        self.C_prev = int(block_multiplier * prev_filter_multiplier)
+        self.C_prev_prev = int(block_multiplier * prev_prev_fmultiplier)
 
         if downup_sample == -1:
             self.preprocess = FactorizedReduce(self.C_prev, self.C_out, affine=False)
@@ -54,9 +54,10 @@ class Cell(nn.Module):
         self.ReLUConvBN = ReLUConvBN (self.C_in, self.C_out, 1, 1, 0)
 
     def forward(self,  prev_prev_input, prev_input):
-        self.cell_arch
         if prev_prev_input is not None:
             s0 = self.pre_preprocess(prev_prev_input)
+        else:
+            s0 = 0
         s1 = self.preprocess(prev_input)
 
         states = [s0, s1]
@@ -67,12 +68,16 @@ class Cell(nn.Module):
             for j, h in enumerate(states):
                 branch_index = offset + j
                 if branch_index in self.cell_arch[:,0]:
+                    if prev_prev_input is None and j==0:
+                        ops_index += 1
+                        continue
                     new_state = self._ops[ops_index](h)
                     new_states.append(new_state)
                     ops_index += 1
-                s = sum(new_states)
-                offset += len(states)
-                states.append(s)
+
+            s = sum(new_states)
+            offset += len(states)
+            states.append(s)
 
         concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
         return prev_input, self.ReLUConvBN (concat_feature)
@@ -107,7 +112,7 @@ class newModel (nn.Module) :
             nn.ReLU ()
         )
         #C_prev_prev = 64
-        initial_fm = int(C_initial / self._block_multiplier)
+        initial_fm = C_initial / self._block_multiplier
         filter_param_dict = {0: 1, 1: 2, 2: 4, 3: 8}
         for i in range (self._num_layers) :
             if i==0:
@@ -168,15 +173,15 @@ class newModel (nn.Module) :
         last_level_option = torch.sum(self.network_arch[-1], dim=1)
         last_level = torch.argmax(last_level_option).item()
         aspp_num_input_channels = self._block_multiplier * self._filter_multiplier * filter_param_dict[last_level]
-        atrous_rate = 96 / (filter_param_dict[last_level] * 4)
+        atrous_rate = int(96 / (filter_param_dict[last_level] * 4))
         self.aspp = ASPP (aspp_num_input_channels, self._num_classes, atrous_rate, atrous_rate) #96 / 4 as in the paper
 
 
     def forward(self, x):
-        x = self.stem0 (x)
-        x = self.stem1 (x)
-        x = self.stem2 (x)
-        two_last_inputs = (None, x)
+        stem = self.stem0 (x)
+        stem = self.stem1 (stem)
+        stem = self.stem2 (stem)
+        two_last_inputs = (None, stem)
         for i in range(self._num_layers):
             two_last_inputs = self.cells[i](two_last_inputs[0], two_last_inputs[1])
 
