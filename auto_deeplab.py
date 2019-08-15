@@ -156,14 +156,13 @@ class AutoDeeplab (nn.Module) :
     def forward (self, x) :
         #TODO: GET RID OF THESE LISTS, we dont need to keep everything.
         #TODO: Is this the reason for the memory issue ?
-        self.level_2 = []
         self.level_4 = []
         self.level_8 = []
         self.level_16 = []
         self.level_32 = []
         temp = self.stem0 (x)
-        self.level_2.append (self.stem1 (temp))
-        self.level_4.append (self.stem2 (self.level_2[-1]))
+        temp = self.stem1 (temp)
+        self.level_4.append (self.stem2 (temp))
 
         count = 0
 
@@ -302,10 +301,10 @@ class AutoDeeplab (nn.Module) :
 
             else :
                 level4_new_1, level4_new_2 = self.cells[count] (self.level_4[-2],
-                                                  None,
-                                                  self.level_4[-1],
-                                                  self.level_8[-1],
-                                                  normalized_alphas)
+                                                                None,
+                                                                self.level_4[-1],
+                                                                self.level_8[-1],
+                                                                normalized_alphas)
                 count += 1
                 level4_new = normalized_bottom_betas[layer][0] * level4_new_1 + normalized_bottom_betas[layer][1] * level4_new_2
 
@@ -340,6 +339,11 @@ class AutoDeeplab (nn.Module) :
                 self.level_8.append (level8_new)
                 self.level_16.append (level16_new)
                 self.level_32.append (level32_new)
+
+            self.level_4 = self.level_4[-2:]
+            self.level_8 = self.level_8[-2:]
+            self.level_16 = self.level_16[-2:]
+            self.level_32 = self.level_32[-2:]
 
         aspp_result_4 = self.aspp_4 (self.level_4[-1])
         aspp_result_8 = self.aspp_8 (self.level_8[-1])
