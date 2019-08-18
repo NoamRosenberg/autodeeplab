@@ -264,7 +264,7 @@ class Trainer(object):
         if new_pred > self.best_pred:
             is_best = True
             self.best_pred = new_pred
-            if len(self.args.gpu_ids) >1:
+            if torch.cuda.device_count() > 1:
                 state_dict = self.model.module.state_dict()
             else:
                 state_dict = self.model.state_dict()
