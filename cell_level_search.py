@@ -29,17 +29,23 @@ class Cell(nn.Module):
                  filter_multiplier):
 
         super(Cell, self).__init__()
-        self.C_in = block_multiplier * filter_multiplier * block_multiplier
-        self.C_out = filter_multiplier * block_multiplier
-        self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
+        # self.C_in = block_multiplier * filter_multiplier * block_multiplier
+        # self.C_out = filter_multiplier * block_multiplier
+        self.C_in = block_multiplier * filter_multiplier
+        self.C_out = filter_multiplier
+        # self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
+        self.C_prev_prev = int(prev_prev_fmultiplier)
         if prev_fmultiplier_down is not None:
-            self.C_prev_down = int(prev_fmultiplier_down * block_multiplier)
+            # self.C_prev_down = int(prev_fmultiplier_down * block_multiplier)
+            self.C_prev_down = prev_fmultiplier_down
             self.preprocess_down = FactorizedReduce(self.C_prev_down, self.C_out, affine=False)
         if prev_fmultiplier_same is not None:
-            self.C_prev_same = int(prev_fmultiplier_same * block_multiplier)
+            # self.C_prev_same = int(prev_fmultiplier_same * block_multiplier)
+            self.C_prev_same = prev_fmultiplier_same
             self.preprocess_same = ReLUConvBN(self.C_prev_same, self.C_out, 1, 1, 0, affine=False)
         if prev_fmultiplier_up is not None:
-            self.C_prev_up = int(prev_fmultiplier_up * block_multiplier)
+            # self.C_prev_up = int(prev_fmultiplier_up * block_multiplier)
+            self.C_prev_up = prev_fmultiplier_up
             self.preprocess_up = FactorizedIncrease(self.C_prev_up, self.C_out)
 
 
