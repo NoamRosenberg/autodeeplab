@@ -61,7 +61,6 @@ class Trainer(object):
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
                                       args.epochs, len(self.train_loaderA), min_lr=args.min_lr)
         # TODO: Figure out if len(self.train_loader) should be devided by two ? in other module as well
-        self.architect = Architect (self.model, args)
 
 
         # Using cuda
@@ -78,6 +77,7 @@ class Trainer(object):
         #print('model loaded')
         #sys.exit()
 
+        self.architect = Architect (self.model, args)
         # Resuming checkpoint
         self.best_pred = 0.0
         if args.resume is not None:
