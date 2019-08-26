@@ -29,7 +29,7 @@ class Trainer(object):
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
 
-        kwargs = {'num_workers': args.workers, 'pin_memory': True}
+        kwargs = {'num_workers': args.workers, 'pin_memory': True, 'drop_last':True}
         self.train_loaderA, self.train_loaderB, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
 
         if args.use_balanced_weights:
