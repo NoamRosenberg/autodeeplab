@@ -20,7 +20,7 @@ class AutoDeeplab (nn.Module) :
         self._criterion = criterion
         self._initialize_alphas_betas ()
 
-        f_initial = int(self._filter_multiplier / 2)
+        f_initial = int((self._filter_multiplier * self._block_multiplier) / 2)
         half_f_initial = int(f_initial / 2)
 
         self.stem0 = nn.Sequential(
