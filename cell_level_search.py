@@ -29,16 +29,15 @@ class Cell(nn.Module):
                  filter_multiplier):
 
         super(Cell, self).__init__()
-        # self.C_in = block_multiplier * filter_multiplier * block_multiplier
-        # self.C_out = filter_multiplier * block_multiplier
+
         self.C_in = block_multiplier * filter_multiplier
         self.C_out = filter_multiplier
+
         self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
         self._prev_fmultiplier_same = prev_fmultiplier_same
-        # self.C_prev_prev = int(prev_prev_fmultiplier)
+
         if prev_fmultiplier_down is not None:
             self.C_prev_down = int(prev_fmultiplier_down * block_multiplier)
-            # self.C_prev_down = prev_fmultiplier_down
             self.preprocess_down = FactorizedReduce(
                 self.C_prev_down, self.C_out, affine=False)
         if prev_fmultiplier_same is not None:
@@ -66,7 +65,7 @@ class Cell(nn.Module):
                     op = MixedOp(self.C_out, stride)
                 self._ops.append(op)
 
-        self.ReLUConvBN = ReLUConvBN(self.C_in, self.C_out, 1, 1, 0)
+        #self.ReLUConvBN = ReLUConvBN(self.C_in, self.C_out, 1, 1, 0)
 
     def forward(self, s0, s1_down, s1_same, s1_up, n_alphas):
 
@@ -116,6 +115,5 @@ class Cell(nn.Module):
                 states.append(s)
 
             concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
-            # final_concates.append(self.ReLUConvBN(concat_feature))
             final_concates.append(concat_feature)
         return final_concates

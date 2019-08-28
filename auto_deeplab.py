@@ -19,7 +19,8 @@ class AutoDeeplab (nn.Module) :
         self._filter_multiplier = filter_multiplier
         self._criterion = criterion
         self._initialize_alphas_betas ()
-        C_initial = self._filter_multiplier *  self._block_multiplier
+#         C_initial = self._filter_multiplier *  self._block_multiplier
+        C_initial = 128
         half_C_initial = int(C_initial / 2)
 
         self.stem0 = nn.Sequential(
@@ -142,16 +143,16 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell4]
 
         self.aspp_4 = nn.Sequential (
-            ASPP (self._block_multiplier * self._filter_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
+            ASPP (self._filter_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
         )
         self.aspp_8 = nn.Sequential (
-            ASPP (self._block_multiplier * self._filter_multiplier * 2, self._num_classes, 12, 12) #96 / 8
+            ASPP (self._filter_multiplier * 2, self._num_classes, 12, 12) #96 / 8
         )
         self.aspp_16 = nn.Sequential (
-            ASPP (self._block_multiplier * self._filter_multiplier * 4, self._num_classes, 6, 6) #96 / 16
+            ASPP (self._filter_multiplier * 4, self._num_classes, 6, 6) #96 / 16
         )
         self.aspp_32 = nn.Sequential (
-            ASPP (self._block_multiplier * self._filter_multiplier * 8, self._num_classes, 3, 3) #96 / 32
+            ASPP (self._filter_multiplier * 8, self._num_classes, 3, 3) #96 / 32
         )
 
 
