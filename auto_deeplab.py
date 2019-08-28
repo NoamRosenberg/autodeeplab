@@ -40,9 +40,8 @@ class AutoDeeplab (nn.Module) :
         )
 
 
-        intitial_fm = C_initial
+        # intitial_fm = C_initial
         for i in range (self._num_layers) :
-
 
             if i == 0 :
                 cell1 = cell (self._step, self._block_multiplier, -1,
@@ -140,16 +139,16 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell4]
 
         self.aspp_4 = nn.Sequential (
-            ASPP (self._filter_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
+            ASPP (self._filter_multiplier * self._block_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
         )
         self.aspp_8 = nn.Sequential (
-            ASPP (self._filter_multiplier * 2, self._num_classes, 12, 12) #96 / 8
+            ASPP (self._filter_multiplier * 2 * self._block_multiplier, self._num_classes, 12, 12) #96 / 8
         )
         self.aspp_16 = nn.Sequential (
-            ASPP (self._filter_multiplier * 4, self._num_classes, 6, 6) #96 / 16
+            ASPP (self._filter_multiplier * 4 * self._block_multiplier, self._num_classes, 6, 6) #96 / 16
         )
         self.aspp_32 = nn.Sequential (
-            ASPP (self._filter_multiplier * 8, self._num_classes, 3, 3) #96 / 32
+            ASPP (self._filter_multiplier * 8 * self._block_multiplier, self._num_classes, 3, 3) #96 / 32
         )
 
 
