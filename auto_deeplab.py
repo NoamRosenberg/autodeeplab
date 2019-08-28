@@ -19,23 +19,23 @@ class AutoDeeplab (nn.Module) :
         self._filter_multiplier = filter_multiplier
         self._criterion = criterion
         self._initialize_alphas_betas ()
-#         C_initial = self._filter_multiplier *  self._block_multiplier
-        C_initial = 128
-        half_C_initial = int(C_initial / 2)
+
+        f_initial = int(self._filter_multiplier / 2)
+        half_f_initial = int(C_initial / 2)
 
         self.stem0 = nn.Sequential(
-            nn.Conv2d(3, half_C_initial, 3, stride=2, padding=1),
-            nn.BatchNorm2d(half_C_initial),
+            nn.Conv2d(3, half_f_initial, 3, stride=2, padding=1),
+            nn.BatchNorm2d(half_f_initial),
             nn.ReLU ()
         )
         self.stem1 = nn.Sequential(
-            nn.Conv2d(half_C_initial, half_C_initial, 3, stride=1, padding=1),
-            nn.BatchNorm2d(half_C_initial),
+            nn.Conv2d(half_f_initial, half_f_initial, 3, stride=1, padding=1),
+            nn.BatchNorm2d(half_f_initial),
             nn.ReLU ()
         )
         self.stem2 = nn.Sequential(
-            nn.Conv2d(half_C_initial, C_initial, 3, stride=2, padding=1),
-            nn.BatchNorm2d(C_initial),
+            nn.Conv2d(half_f_initial, f_initial, 3, stride=2, padding=1),
+            nn.BatchNorm2d(f_initial),
             nn.ReLU ()
         )
 
@@ -46,18 +46,15 @@ class AutoDeeplab (nn.Module) :
 
             if i == 0 :
                 cell1 = cell (self._step, self._block_multiplier, -1,
-                              None, int(intitial_fm /
-                                       self._block_multiplier), None,
+                              None, f_initial, None,
                               self._filter_multiplier)
                 cell2 = cell (self._step, self._block_multiplier, -1,
-                              int(intitial_fm /
-                                       self._block_multiplier), None, None,
+                              f_initial, None, None,
                               self._filter_multiplier * 2)
                 self.cells += [cell1]
                 self.cells += [cell2]
             elif i == 1 :
-                cell1 = cell (self._step, self._block_multiplier, int(intitial_fm /
-                                       self._block_multiplier),
+                cell1 = cell (self._step, self._block_multiplier, f_initial,
                               None, self._filter_multiplier, self._filter_multiplier * 2,
                               self._filter_multiplier)
 
