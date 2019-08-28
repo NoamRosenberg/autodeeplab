@@ -19,45 +19,41 @@ class AutoDeeplab (nn.Module) :
         self._filter_multiplier = filter_multiplier
         self._criterion = criterion
         self._initialize_alphas_betas ()
-#         C_initial = self._filter_multiplier *  self._block_multiplier
-        C_initial = 128
-        half_C_initial = int(C_initial / 2)
+
+        f_initial = int(self._filter_multiplier / 2)
+        half_f_initial = int(f_initial / 2)
 
         self.stem0 = nn.Sequential(
-            nn.Conv2d(3, half_C_initial, 3, stride=2, padding=1),
-            nn.BatchNorm2d(half_C_initial),
+            nn.Conv2d(3, half_f_initial * self._block_multiplier, 3, stride=2, padding=1),
+            nn.BatchNorm2d(half_f_initial* self._block_multiplier),
             nn.ReLU ()
         )
         self.stem1 = nn.Sequential(
-            nn.Conv2d(half_C_initial, half_C_initial, 3, stride=1, padding=1),
-            nn.BatchNorm2d(half_C_initial),
+            nn.Conv2d(half_f_initial* self._block_multiplier, half_f_initial* self._block_multiplier, 3, stride=1, padding=1),
+            nn.BatchNorm2d(half_f_initial* self._block_multiplier),
             nn.ReLU ()
         )
         self.stem2 = nn.Sequential(
-            nn.Conv2d(half_C_initial, C_initial, 3, stride=2, padding=1),
-            nn.BatchNorm2d(C_initial),
+            nn.Conv2d(half_f_initial* self._block_multiplier, f_initial* self._block_multiplier, 3, stride=2, padding=1),
+            nn.BatchNorm2d(f_initial* self._block_multiplier),
             nn.ReLU ()
         )
 
 
-        intitial_fm = C_initial
+        # intitial_fm = C_initial
         for i in range (self._num_layers) :
-
 
             if i == 0 :
                 cell1 = cell (self._step, self._block_multiplier, -1,
-                              None, int(intitial_fm /
-                                       self._block_multiplier), None,
+                              None, f_initial, None,
                               self._filter_multiplier)
                 cell2 = cell (self._step, self._block_multiplier, -1,
-                              int(intitial_fm /
-                                       self._block_multiplier), None, None,
+                              f_initial, None, None,
                               self._filter_multiplier * 2)
                 self.cells += [cell1]
                 self.cells += [cell2]
             elif i == 1 :
-                cell1 = cell (self._step, self._block_multiplier, int(intitial_fm /
-                                       self._block_multiplier),
+                cell1 = cell (self._step, self._block_multiplier, f_initial,
                               None, self._filter_multiplier, self._filter_multiplier * 2,
                               self._filter_multiplier)
 
@@ -143,16 +139,16 @@ class AutoDeeplab (nn.Module) :
                 self.cells += [cell4]
 
         self.aspp_4 = nn.Sequential (
-            ASPP (self._filter_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
+            ASPP (self._filter_multiplier * self._block_multiplier, self._num_classes, 24, 24) #96 / 4 as in the paper
         )
         self.aspp_8 = nn.Sequential (
-            ASPP (self._filter_multiplier * 2, self._num_classes, 12, 12) #96 / 8
+            ASPP (self._filter_multiplier * 2 * self._block_multiplier, self._num_classes, 12, 12) #96 / 8
         )
         self.aspp_16 = nn.Sequential (
-            ASPP (self._filter_multiplier * 4, self._num_classes, 6, 6) #96 / 16
+            ASPP (self._filter_multiplier * 4 * self._block_multiplier, self._num_classes, 6, 6) #96 / 16
         )
         self.aspp_32 = nn.Sequential (
-            ASPP (self._filter_multiplier * 8, self._num_classes, 3, 3) #96 / 32
+            ASPP (self._filter_multiplier * 8 * self._block_multiplier, self._num_classes, 3, 3) #96 / 32
         )
 
 
