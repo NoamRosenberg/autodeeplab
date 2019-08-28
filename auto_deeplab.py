@@ -46,15 +46,18 @@ class AutoDeeplab (nn.Module) :
 
             if i == 0 :
                 cell1 = cell (self._step, self._block_multiplier, -1,
-                              None, intitial_fm, None,
+                              None, int(intitial_fm /
+                                       self._block_multiplier), None,
                               self._filter_multiplier)
                 cell2 = cell (self._step, self._block_multiplier, -1,
-                              intitial_fm, None, None,
+                              int(intitial_fm /
+                                       self._block_multiplier), None, None,
                               self._filter_multiplier * 2)
                 self.cells += [cell1]
                 self.cells += [cell2]
             elif i == 1 :
-                cell1 = cell (self._step, self._block_multiplier, intitial_fm,
+                cell1 = cell (self._step, self._block_multiplier, int(intitial_fm /
+                                       self._block_multiplier),
                               None, self._filter_multiplier, self._filter_multiplier * 2,
                               self._filter_multiplier)
 

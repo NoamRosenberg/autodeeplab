@@ -29,28 +29,28 @@ class Cell(nn.Module):
                  filter_multiplier):
 
         super(Cell, self).__init__()
-        # self.C_in = block_multiplier * filter_multiplier * block_multiplier
-        # self.C_out = filter_multiplier * block_multiplier
+
         self.C_in = block_multiplier * filter_multiplier
         self.C_out = filter_multiplier
-        # self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
-        self.C_prev_prev = int(prev_prev_fmultiplier)
+
+        self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
+        self._prev_fmultiplier_same = prev_fmultiplier_same
+
         if prev_fmultiplier_down is not None:
-            # self.C_prev_down = int(prev_fmultiplier_down * block_multiplier)
-            self.C_prev_down = prev_fmultiplier_down
-            self.preprocess_down = FactorizedReduce(self.C_prev_down, self.C_out, affine=False)
+            self.C_prev_down = int(prev_fmultiplier_down * block_multiplier)
+            self.preprocess_down = FactorizedReduce(
+                self.C_prev_down, self.C_out, affine=False)
         if prev_fmultiplier_same is not None:
-            # self.C_prev_same = int(prev_fmultiplier_same * block_multiplier)
-            self.C_prev_same = prev_fmultiplier_same
-            self.preprocess_same = ReLUConvBN(self.C_prev_same, self.C_out, 1, 1, 0, affine=False)
+            self.C_prev_same = int(prev_fmultiplier_same * block_multiplier)
+            self.preprocess_same = ReLUConvBN(
+                self.C_prev_same, self.C_out, 1, 1, 0, affine=False)
         if prev_fmultiplier_up is not None:
-            # self.C_prev_up = int(prev_fmultiplier_up * block_multiplier)
-            self.C_prev_up = prev_fmultiplier_up
+            self.C_prev_up = int(prev_fmultiplier_up * block_multiplier)
             self.preprocess_up = FactorizedIncrease(self.C_prev_up, self.C_out)
 
-
-        if prev_prev_fmultiplier != -1 :
-            self.pre_preprocess = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
+        if prev_prev_fmultiplier != -1:
+            self.pre_preprocess = ReLUConvBN(
+                self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
 
         self._steps = steps
         self.block_multiplier = block_multiplier
@@ -59,15 +59,13 @@ class Cell(nn.Module):
         for i in range(self._steps):
             for j in range(2+i):
                 stride = 1
-                if prev_prev_fmultiplier == -1 and j==0:
+                if prev_prev_fmultiplier == -1 and j == 0:
                     op = None
                 else:
                     op = MixedOp(self.C_out, stride)
                 self._ops.append(op)
 
-
-        self.ReLUConvBN = ReLUConvBN (self.C_in, self.C_out, 1, 1, 0)
-
+        #self.ReLUConvBN = ReLUConvBN(self.C_in, self.C_out, 1, 1, 0)
 
     def forward(self, s0, s1_down, s1_same, s1_up, n_alphas):
 
@@ -78,7 +76,7 @@ class Cell(nn.Module):
         if s1_up is not None:
             s1_up = self.preprocess_up(s1_up)
         all_states = []
-        if s0 is not None :
+        if s0 is not None:
             s0 = self.pre_preprocess(s0)
             if s1_down is not None:
                 states_down = [s0, s1_down]
@@ -89,7 +87,7 @@ class Cell(nn.Module):
             if s1_up is not None:
                 states_up = [s0, s1_up]
                 all_states.append(states_up)
-        else :
+        else:
             if s1_down is not None:
                 states_down = [0, s1_down]
                 all_states.append(states_down)
@@ -99,7 +97,6 @@ class Cell(nn.Module):
             if s1_up is not None:
                 states_up = [0, s1_up]
                 all_states.append(states_up)
-
 
         final_concates = []
         for states in all_states:
@@ -117,10 +114,6 @@ class Cell(nn.Module):
                 offset += len(states)
                 states.append(s)
 
-
             concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
-            final_concates.append(self.ReLUConvBN (concat_feature))
-        return  final_concates
-
-
-
+            final_concates.append(concat_feature)
+        return final_concates
