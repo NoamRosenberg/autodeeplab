@@ -20,22 +20,22 @@ class AutoDeeplab (nn.Module) :
         self._criterion = criterion
         self._initialize_alphas_betas ()
 
-        f_initial = int((self._filter_multiplier * self._block_multiplier) / 2)
+        f_initial = int(self._filter_multiplier / 2)
         half_f_initial = int(f_initial / 2)
 
         self.stem0 = nn.Sequential(
-            nn.Conv2d(3, half_f_initial, 3, stride=2, padding=1),
-            nn.BatchNorm2d(half_f_initial),
+            nn.Conv2d(3, half_f_initial * self._block_multiplier, 3, stride=2, padding=1),
+            nn.BatchNorm2d(half_f_initial* self._block_multiplier),
             nn.ReLU ()
         )
         self.stem1 = nn.Sequential(
-            nn.Conv2d(half_f_initial, half_f_initial, 3, stride=1, padding=1),
-            nn.BatchNorm2d(half_f_initial),
+            nn.Conv2d(half_f_initial* self._block_multiplier, half_f_initial* self._block_multiplier, 3, stride=1, padding=1),
+            nn.BatchNorm2d(half_f_initial* self._block_multiplier),
             nn.ReLU ()
         )
         self.stem2 = nn.Sequential(
-            nn.Conv2d(half_f_initial, f_initial, 3, stride=2, padding=1),
-            nn.BatchNorm2d(f_initial),
+            nn.Conv2d(half_f_initial* self._block_multiplier, f_initial* self._block_multiplier, 3, stride=2, padding=1),
+            nn.BatchNorm2d(f_initial* self._block_multiplier),
             nn.ReLU ()
         )
 
