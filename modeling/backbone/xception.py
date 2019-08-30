@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 
+
 def fixed_padding(inputs, kernel_size, dilation):
     kernel_size_effective = kernel_size + (kernel_size - 1) * (dilation - 1)
     pad_total = kernel_size_effective - 1
@@ -24,7 +25,8 @@ class SeparableConv2d(nn.Module):
         self.pointwise = nn.Conv2d(inplanes, planes, 1, 1, 0, 1, 1, bias=bias)
 
     def forward(self, x):
-        x = fixed_padding(x, self.conv1.kernel_size[0], dilation=self.conv1.dilation[0])
+        x = fixed_padding(
+            x, self.conv1.kernel_size[0], dilation=self.conv1.dilation[0])
         x = self.conv1(x)
         x = self.bn(x)
         x = self.pointwise(x)
@@ -33,43 +35,55 @@ class SeparableConv2d(nn.Module):
 
 class Block(nn.Module):
     def __init__(self, inplanes, planes, reps, stride=1, dilation=1, BatchNorm=None,
-                 start_with_relu=True, grow_first=True, is_last=False):
+                 start_with_relu=True, grow_first=True, is_last=False, skip=None):
         super(Block, self).__init__()
 
         if planes != inplanes or stride != 1:
-            self.skip = nn.Conv2d(inplanes, planes, 1, stride=stride, bias=False)
+            self.skip = nn.Conv2d(inplanes, planes, 1,
+                                  stride=stride, bias=False)
             self.skipbn = BatchNorm(planes)
+        elif skip != None:
+            if skip == 'conv':
+                self.skip = nn.Conv2d(inplanes, planes, 1,
+                                      stride=stride, bias=False)
+                self.skipbn = BatchNorm(planes)
         else:
             self.skip = None
 
-        self.relu = nn.ReLU(inplace=True)
+        # self.relu = nn.ReLU(inplace=False)
+        self.relu = nn.ReLU()
         rep = []
 
         filters = inplanes
         if grow_first:
             rep.append(self.relu)
-            rep.append(SeparableConv2d(inplanes, planes, 3, 1, dilation, BatchNorm=BatchNorm))
+            rep.append(SeparableConv2d(inplanes, planes, 3,
+                                       1, dilation, BatchNorm=BatchNorm))
             rep.append(BatchNorm(planes))
             filters = planes
 
         for i in range(reps - 1):
             rep.append(self.relu)
-            rep.append(SeparableConv2d(filters, filters, 3, 1, dilation, BatchNorm=BatchNorm))
+            rep.append(SeparableConv2d(filters, filters, 3,
+                                       1, dilation, BatchNorm=BatchNorm))
             rep.append(BatchNorm(filters))
 
         if not grow_first:
             rep.append(self.relu)
-            rep.append(SeparableConv2d(inplanes, planes, 3, 1, dilation, BatchNorm=BatchNorm))
+            rep.append(SeparableConv2d(inplanes, planes, 3,
+                                       1, dilation, BatchNorm=BatchNorm))
             rep.append(BatchNorm(planes))
 
         if stride != 1:
             rep.append(self.relu)
-            rep.append(SeparableConv2d(planes, planes, 3, 2, BatchNorm=BatchNorm))
+            rep.append(SeparableConv2d(
+                planes, planes, 3, 2, BatchNorm=BatchNorm))
             rep.append(BatchNorm(planes))
 
         if stride == 1 and is_last:
             rep.append(self.relu)
-            rep.append(SeparableConv2d(planes, planes, 3, 1, BatchNorm=BatchNorm))
+            rep.append(SeparableConv2d(
+                planes, planes, 3, 1, BatchNorm=BatchNorm))
             rep.append(BatchNorm(planes))
 
         if not start_with_relu:
@@ -95,8 +109,9 @@ class AlignedXception(nn.Module):
     """
     Modified Alighed Xception
     """
+
     def __init__(self, output_stride, BatchNorm,
-                 pretrained=True):
+                 pretrained=False, mode='xception_71'):
         super(AlignedXception, self).__init__()
 
         if output_stride == 16:
@@ -110,34 +125,59 @@ class AlignedXception(nn.Module):
         else:
             raise NotImplementedError
 
-
         # Entry flow
         self.conv1 = nn.Conv2d(3, 32, 3, stride=2, padding=1, bias=False)
         self.bn1 = BatchNorm(32)
-        self.relu = nn.ReLU(inplace=True)
+        # self.relu = nn.ReLU(inplace=False)
+        self.relu = nn.ReLU()
 
+        self.block0_0 = nn.Sequential(self.conv1, self.bn1, self.relu)
         self.conv2 = nn.Conv2d(32, 64, 3, stride=1, padding=1, bias=False)
         self.bn2 = BatchNorm(64)
+        self.block0_1 = nn.Sequential(self.conv2, self.bn2, self.relu)
 
-        self.block1 = Block(64, 128, reps=2, stride=2, BatchNorm=BatchNorm, start_with_relu=False)
-        self.block2 = Block(128, 256, reps=2, stride=2, BatchNorm=BatchNorm, start_with_relu=False,
-                            grow_first=True)
-        self.block3 = Block(256, 728, reps=2, stride=entry_block3_stride, BatchNorm=BatchNorm,
-                            start_with_relu=True, grow_first=True, is_last=True)
+        self.block1 = Block(64, 128, reps=2, stride=2,
+                            BatchNorm=BatchNorm, start_with_relu=False)
+        if mode == 'xception_71':
+            # self.block2 = nn.Sequential(Block(128, 256, reps=2, stride=2, BatchNorm=BatchNorm, start_with_relu=False, grow_first=True),
+            #                             Block(256, 256, reps=2, stride=2, BatchNorm=BatchNorm, start_with_relu=False, grow_first=True))
+            self.block2_0 = Block(128, 256, reps=2, stride=2,
+                                  BatchNorm=BatchNorm, start_with_relu=False, grow_first=True)
+            self.block2_1 = Block(256, 256, reps=2, stride=1,
+                                  BatchNorm=BatchNorm, start_with_relu=False, is_last=True, grow_first=True, skip='conv')
+            self.block2 = nn.Sequential(self.block2_0, self.block2_1)
+        elif mode == 'xception_65':
+            self.block2 = Block(128, 256, reps=2, stride=2, BatchNorm=BatchNorm, start_with_relu=False,
+                                grow_first=True)
+
+        if mode == 'xception_71':
+            # self.block3 = nn.Sequential(Block(256, 728, reps=2, stride=entry_block3_stride, BatchNorm=BatchNorm, start_with_relu=True, grow_first=True, is_last=True),
+            #                             Block(728, 728, reps=2, stride=1, BatchNorm=BatchNorm, start_with_relu=True, grow_first=True, is_last=True))
+            self.block3_0 = Block(256, 728, reps=3, stride=entry_block3_stride,
+                                  BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
+            self.block3_1 = Block(728, 728, reps=2, stride=1,
+                                  BatchNorm=BatchNorm, start_with_relu=True, grow_first=True, is_last=True, skip='conv')
+            self.block3 = nn.Sequential(self.block3_0, self.block3_1)
+        if mode == 'xception_65':
+            self.block3 = Block(256, 728, reps=2, stride=entry_block3_stride, BatchNorm=BatchNorm,
+                                start_with_relu=True, grow_first=True, is_last=True)
+
+        self.entry_flow = nn.Sequential(
+            self.conv1, self.bn1, self.relu, self.conv2, self.bn2, self.block1, self.block2, self.block3)
 
         # Middle flow
-        self.block4  = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
-                             BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
-        self.block5  = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
-                             BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
-        self.block6  = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
-                             BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
-        self.block7  = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
-                             BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
-        self.block8  = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
-                             BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
-        self.block9  = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
-                             BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
+        self.block4 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
+                            BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
+        self.block5 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
+                            BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
+        self.block6 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
+                            BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
+        self.block7 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
+                            BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
+        self.block8 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
+                            BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
+        self.block9 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
+                            BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
         self.block10 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
                              BatchNorm=BatchNorm, start_with_relu=True, grow_first=True)
         self.block11 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
@@ -163,14 +203,20 @@ class AlignedXception(nn.Module):
         self.block20 = Block(728, 1024, reps=2, stride=1, dilation=exit_block_dilations[0],
                              BatchNorm=BatchNorm, start_with_relu=True, grow_first=False, is_last=True)
 
-        self.conv3 = SeparableConv2d(1024, 1536, 3, stride=1, dilation=exit_block_dilations[1], BatchNorm=BatchNorm)
+        self.conv3 = SeparableConv2d(
+            1024, 1536, 3, stride=1, dilation=exit_block_dilations[1], BatchNorm=BatchNorm)
         self.bn3 = BatchNorm(1536)
 
-        self.conv4 = SeparableConv2d(1536, 1536, 3, stride=1, dilation=exit_block_dilations[1], BatchNorm=BatchNorm)
+        self.conv4 = SeparableConv2d(
+            1536, 1536, 3, stride=1, dilation=exit_block_dilations[1], BatchNorm=BatchNorm)
         self.bn4 = BatchNorm(1536)
 
-        self.conv5 = SeparableConv2d(1536, 2048, 3, stride=1, dilation=exit_block_dilations[1], BatchNorm=BatchNorm)
+        self.conv5 = SeparableConv2d(
+            1536, 2048, 3, stride=1, dilation=exit_block_dilations[1], BatchNorm=BatchNorm)
         self.bn5 = BatchNorm(2048)
+
+        self.exit_flow = nn.Sequential(
+            self.block20, self.conv3, self.bn3, self.conv4, self.bn4, self.conv5, self.bn5)
 
         # Init weights
         self._init_weight()
@@ -181,19 +227,16 @@ class AlignedXception(nn.Module):
 
     def forward(self, x):
         # Entry flow
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
 
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
+        x = self.block0_0(x)
+        x = self.block0_1(x)
+
 
         x = self.block1(x)
         # add relu here
         x = self.relu(x)
-        low_level_feat = x
         x = self.block2(x)
+        low_level_feat = x
         x = self.block3(x)
 
         # Middle flow
@@ -243,9 +286,9 @@ class AlignedXception(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-
     def _load_pretrained_model(self):
-        pretrain_dict = model_zoo.load_url('http://data.lip6.fr/cadene/pretrainedmodels/xception-b5690688.pth')
+        pretrain_dict = model_zoo.load_url(
+            'http://data.lip6.fr/cadene/pretrainedmodels/xception-b5690688.pth')
         model_dict = {}
         state_dict = self.state_dict()
 
@@ -278,10 +321,10 @@ class AlignedXception(nn.Module):
         self.load_state_dict(state_dict)
 
 
-
 if __name__ == "__main__":
     import torch
-    model = AlignedXception(BatchNorm=nn.BatchNorm2d, pretrained=True, output_stride=16)
+    model = AlignedXception(BatchNorm=nn.BatchNorm2d,
+                            pretrained=True, output_stride=16)
     input = torch.rand(1, 3, 512, 512)
     output, low_level_feat = model(input)
     print(output.size())
