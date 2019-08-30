@@ -91,7 +91,7 @@ def obtain_default_train_args():
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
     parser.add_argument('--filter_multiplier', type=int,
-                        default=32, help='F in paper')
+                        default=20, help='F in paper')
     parser.add_argument('--steps', type=int, default=5, help='B in paper')
     parser.add_argument('--down_sample_level', type=int,
                         default=8, help='s in paper')
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     import torch
     # model = ResNet101(BatchNorm=nn.BatchNorm2d,
     #                   pretrained=True, output_stride=8)
-    # input = torch.rand(1, 3, 128, 128)
+    input = torch.rand(1, 3, 513, 513)
     # output, low_level_feat = model(input)
     # print(output.size())
     # print(low_level_feat.size())
@@ -112,20 +112,4 @@ if __name__ == "__main__":
                     output_stride=8,
                     sync_bn=False,
                     freeze_bn=False, args=args, separate=False)
-    # input = torch.randn(1, 3, 1025, 2049)
-
-    # params, flops = profile(model, inputs=(input,))
-    # print(params)
-    # print(flops)
-    a = total_params(model.backbone.stem2)
-    print(model.backbone.stem2)
-
-    # a = total_params(model.decoder.conv1) + total_params(model.decoder.conv2)
-    # print(a)
-
-    # total_params(nn.Sequential(model))
-    # input = torch.rand(2, 3, 1025, 2049)
-
-    # params, flops = profile(model, inputs=(input,))
-    # print(params)
-    # print(flops)
+    model.backbone(input)
