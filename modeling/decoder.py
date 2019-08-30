@@ -53,7 +53,7 @@ class Decoder(nn.Module):
                                        BatchNorm(256),
                                        nn.ReLU(),
                                        nn.Dropout(0.1))
-        self.last_1linear = nn.Conv2d(
+        self.last_linear = nn.Conv2d(
             256, num_classes, kernel_size=1, stride=1)
 
         self._init_weight()

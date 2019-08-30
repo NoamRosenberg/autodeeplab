@@ -46,6 +46,10 @@ class Cell(nn.Module):
             primitive = PRIMITIVES[x[1]]
             op = OPS[primitive](self.C_out, stride=1, affine=True)
             self._ops.append(op)
+            if mode == 'test':
+                print(primitive)
+                total_params(op)
+
 
     def scale_dimension(self, dim, scale):
         return int((float(dim) - 1.0) * scale + 1.0)
@@ -180,9 +184,7 @@ class newModel (nn.Module):
             two_last_inputs = self.cells[i](
                 two_last_inputs[0], two_last_inputs[1])
             if i == 0:
-                low_level_feature = two_last_inputs[0]
-            if i == 0:
-                break
+                low_level_feature = two_last_inputs[1]
         last_output = two_last_inputs[-1]
 
         if self._full_net is None:

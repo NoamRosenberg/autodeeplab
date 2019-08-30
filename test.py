@@ -106,7 +106,7 @@ if __name__ == "__main__":
     import torch
     # model = ResNet101(BatchNorm=nn.BatchNorm2d,
     #                   pretrained=True, output_stride=8)
-    input = torch.rand(1, 3, 513, 513)
+    input = torch.rand(2, 3, 1025, 2049)
     # output, low_level_feat = model(input)
     # print(output.size())
     # print(low_level_feat.size())
@@ -116,9 +116,9 @@ if __name__ == "__main__":
                     output_stride=8,
                     sync_bn=False,
                     freeze_bn=False, args=args, separate=False)
-    model.backbone(input)
-    total_params(model.decoder)
-
+    # model.backbone(input)
+    total_params(model.backbone)
+    # print(model.backbone.cells[1])
     # params, flops = profile(model, inputs=(input,))
     # print(params)
     # print(flops)
