@@ -117,7 +117,7 @@ if __name__ == "__main__":
                     sync_bn=False,
                     freeze_bn=False, args=args, separate=False)
     # model.backbone(input)
-    total_params(model.backbone)
+    total_params(model)
     # print(model.backbone.cells[1])
     # params, flops = profile(model, inputs=(input,))
     # print(params)
