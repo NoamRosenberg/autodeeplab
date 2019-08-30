@@ -9,19 +9,13 @@ import numpy as np
 from operations import *
 
 
-def total_params(model, log=True):
-    params = sum(p.numel() / 1000.0 for p in model.parameters())
-    if log:
-        print(">>> total params: {:.5f}K".format(params))
-    return params
-
 
 class Cell(nn.Module):
 
     def __init__(self, steps, block_multiplier, prev_prev_fmultiplier,
                  prev_filter_multiplier,
                  cell_arch, network_arch,
-                 filter_multiplier, downup_sample, mode='no_test'):
+                 filter_multiplier, downup_sample):
 
         super(Cell, self).__init__()
         self.cell_arch = cell_arch
@@ -46,9 +40,6 @@ class Cell(nn.Module):
             primitive = PRIMITIVES[x[1]]
             op = OPS[primitive](self.C_out, stride=1, affine=True)
             self._ops.append(op)
-            if mode == 'test':
-                print(primitive)
-                total_params(op)
 
 
     def scale_dimension(self, dim, scale):
@@ -144,7 +135,7 @@ class newModel (nn.Module):
                              self.cell_arch, self.network_arch[i],
                              self._filter_multiplier *
                              filter_param_dict[level],
-                             downup_sample, 'test')
+                             downup_sample)
             else:
                 three_branch_options = torch.sum(self.network_arch[i], dim=0)
                 downup_sample = torch.argmax(three_branch_options).item() - 1
