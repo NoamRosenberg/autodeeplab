@@ -9,12 +9,19 @@ import numpy as np
 from operations import *
 
 
+def total_params(model, log=True):
+    params = sum(p.numel() / 1000.0 for p in model.parameters())
+    if log:
+        print(">>> total params: {:.5f}K".format(params))
+    return params
+
+
 class Cell(nn.Module):
 
     def __init__(self, steps, block_multiplier, prev_prev_fmultiplier,
                  prev_filter_multiplier,
                  cell_arch, network_arch,
-                 filter_multiplier, downup_sample):
+                 filter_multiplier, downup_sample, mode='no_test'):
 
         super(Cell, self).__init__()
         self.cell_arch = cell_arch
@@ -25,9 +32,9 @@ class Cell(nn.Module):
         self.C_prev_prev = int(block_multiplier * prev_prev_fmultiplier)
         self.downup_sample = downup_sample
         self.pre_preprocess = ReLUConvBN(
-            self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
+            self.C_prev_prev, self.C_out, 1, 1, 0, affine=True)
         self.preprocess = ReLUConvBN(
-            self.C_prev, self.C_out, 1, 1, 0, affine=False)
+            self.C_prev, self.C_out, 1, 1, 0, affine=True)
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
@@ -35,13 +42,10 @@ class Cell(nn.Module):
             self.scale = 0.5
         elif downup_sample == 1:
             self.scale = 2
-
         for x in self.cell_arch:
             primitive = PRIMITIVES[x[1]]
-            op = OPS[primitive](self.C_out, stride=1, affine=False)
+            op = OPS[primitive](self.C_out, stride=1, affine=True)
             self._ops.append(op)
-
-        self.ReLUConvBN = ReLUConvBN(self.C_in, self.C_out, 1, 1, 0)
 
     def scale_dimension(self, dim, scale):
         return int((float(dim) - 1.0) * scale + 1.0)
@@ -63,6 +67,7 @@ class Cell(nn.Module):
         s1 = self.preprocess(prev_input)
 
         states = [s0, s1]
+        # print(s1.shape)
         offset = 0
         ops_index = 0
         for i in range(self._steps):
@@ -135,7 +140,7 @@ class newModel (nn.Module):
                              self.cell_arch, self.network_arch[i],
                              self._filter_multiplier *
                              filter_param_dict[level],
-                             downup_sample)
+                             downup_sample, 'test')
             else:
                 three_branch_options = torch.sum(self.network_arch[i], dim=0)
                 downup_sample = torch.argmax(three_branch_options).item() - 1
@@ -176,6 +181,8 @@ class newModel (nn.Module):
                 two_last_inputs[0], two_last_inputs[1])
             if i == 0:
                 low_level_feature = two_last_inputs[0]
+            if i == 0:
+                break
         last_output = two_last_inputs[-1]
 
         if self._full_net is None:

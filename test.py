@@ -1,15 +1,19 @@
 import torch.nn as nn
-from modeling.backbone.resnet import ResNet101
+# from modeling.backbone.resnet import ResNet101
 # from lib.config_utils.basic_args import obtain_default_train_args
 import argparse
 from modeling.deeplab import DeepLab
 from thop import profile
+from torchsummary import summary
+import warnings
+
+warnings.filterwarnings('ignore')
 
 
 def total_params(model, log=True):
     params = sum(p.numel() / 1000.0 for p in model.parameters())
     if log:
-        print(">>> total params: {:.5f}K".format(params))
+        print(">>> total params: {:.2f}K".format(params))
     return params
 
 
@@ -91,7 +95,7 @@ def obtain_default_train_args():
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
     parser.add_argument('--filter_multiplier', type=int,
-                        default=20, help='F in paper')
+                        default=32, help='F in paper')
     parser.add_argument('--steps', type=int, default=5, help='B in paper')
     parser.add_argument('--down_sample_level', type=int,
                         default=8, help='s in paper')
@@ -113,3 +117,10 @@ if __name__ == "__main__":
                     sync_bn=False,
                     freeze_bn=False, args=args, separate=False)
     model.backbone(input)
+    total_params(model.decoder)
+
+    # params, flops = profile(model, inputs=(input,))
+    # print(params)
+    # print(flops)
+
+    # summary(model.backbone.cuda(), input_size=(3, 513, 513))
