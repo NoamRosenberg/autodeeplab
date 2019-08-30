@@ -55,7 +55,7 @@ class ASPP(nn.Module):
         elif backbone == 'mobilenet':
             inplanes = 320
         elif backbone == 'autodeeplab':
-            inplanes = int(args.filter_multiplier * 10)
+            inplanes = int(args.filter_multiplier * args.steps * (args.down_sample_level / 4))
         else:
             inplanes = 2048
         if output_stride == 16:

@@ -24,7 +24,7 @@ class DeepLab(nn.Module):
         self.aspp = build_aspp(backbone, output_stride,
                                BatchNorm, args, separate)
         self.decoder = build_decoder(
-            num_classes, backbone, BatchNorm, separate)
+            num_classes, backbone, BatchNorm, args, separate)
 
         if freeze_bn:
             self.freeze_bn()

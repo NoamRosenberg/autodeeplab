@@ -6,9 +6,10 @@ from modeling.deeplab import DeepLab
 from thop import profile
 
 
-def total_params(model):
+def total_params(model, log=True):
     params = sum(p.numel() / 1000.0 for p in model.parameters())
-    print(">>> total params: {:.5f}K".format(params))
+    if log:
+        print(">>> total params: {:.5f}K".format(params))
     return params
 
 
@@ -86,9 +87,14 @@ def obtain_default_train_args():
                         help='finetuning on a different dataset')
     # evaluation option
     parser.add_argument('--eval-interval', type=int, default=1,
-                        help='evaluuation interval (default: 1)')
+                        help='evaluation interval (default: 1)')
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
+    parser.add_argument('--filter_multiplier', type=int,
+                        default=32, help='F in paper')
+    parser.add_argument('--steps', type=int, default=5, help='B in paper')
+    parser.add_argument('--down_sample_level', type=int,
+                        default=8, help='s in paper')
     return parser.parse_args()
 
 
@@ -102,22 +108,24 @@ if __name__ == "__main__":
     # print(low_level_feat.size())
     args = obtain_default_train_args()
     model = DeepLab(num_classes=19,
-                    backbone='xception',
+                    backbone='autodeeplab',
                     output_stride=8,
                     sync_bn=False,
-                    freeze_bn=False, args=args, separate=True)
+                    freeze_bn=False, args=args, separate=False)
     # input = torch.randn(1, 3, 1025, 2049)
 
     # params, flops = profile(model, inputs=(input,))
     # print(params)
     # print(flops)
+    a = total_params(model.backbone.stem2)
+    print(model.backbone.stem2)
 
-    # a = total_params(model.backbone) - total_params(model.backbone.entry_flow) - total_params(model.backbone.exit_flow)
+    # a = total_params(model.decoder.conv1) + total_params(model.decoder.conv2)
     # print(a)
 
-    total_params(nn.Sequential(model))
-    input = torch.rand(2, 3, 1025, 2049)
+    # total_params(nn.Sequential(model))
+    # input = torch.rand(2, 3, 1025, 2049)
 
-    params, flops = profile(model, inputs=(input,))
-    print(params)
-    print(flops)
+    # params, flops = profile(model, inputs=(input,))
+    # print(params)
+    # print(flops)

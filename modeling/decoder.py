@@ -18,7 +18,7 @@ def SeparateConv(C_in, C_out, kernel_size, stride=1, padding=0, dilation=1, bias
 
 
 class Decoder(nn.Module):
-    def __init__(self, num_classes, backbone, BatchNorm, separate):
+    def __init__(self, num_classes, backbone, BatchNorm, args, separate):
         super(Decoder, self).__init__()
         if backbone == 'resnet' or backbone == 'drn':
             low_level_inplanes = 256
@@ -28,19 +28,21 @@ class Decoder(nn.Module):
             low_level_inplanes = 24
 
         elif backbone == 'autodeeplab':
-            low_level_inplanes = 128
+            low_level_inplanes = args.filter_multiplier * args.steps
         else:
             raise NotImplementedError
 
-        self.feature_projection = nn.Conv2d(
+        self.conv_feature = nn.Conv2d(
             low_level_inplanes, 48, 1, bias=False)
         self.bn1 = BatchNorm(48)
         self.relu = nn.ReLU()
+        self.feature_projection = nn.Sequential(
+            self.conv_feature, self.bn1, self.relu)
         if separate == True:
             self.conv1 = nn.Sequential(SeparateConv(304, 256, kernel_size=3, stride=1, padding=1, bias=False),
                                        nn.Dropout(0.5))
             self.conv2 = nn.Sequential(SeparateConv(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
-                                       nn.Dropout(0.1))     
+                                       nn.Dropout(0.1))
 
         else:
             self.conv1 = nn.Sequential(nn.Conv2d(304, 256, kernel_size=3, stride=1, padding=1, bias=False),
@@ -51,15 +53,14 @@ class Decoder(nn.Module):
                                        BatchNorm(256),
                                        nn.ReLU(),
                                        nn.Dropout(0.1))
-        self.last_linear = nn.Conv2d(256, num_classes, kernel_size=1, stride=1)
+        self.last_1linear = nn.Conv2d(
+            256, num_classes, kernel_size=1, stride=1)
 
         self._init_weight()
 
     def forward(self, x, low_level_feat):
 
         low_level_feat = self.feature_projection(low_level_feat)
-        low_level_feat = self.bn1(low_level_feat)
-        low_level_feat = self.relu(low_level_feat)
 
         x = F.interpolate(x, size=low_level_feat.size()[
             2:], mode='bilinear', align_corners=True)
@@ -82,5 +83,5 @@ class Decoder(nn.Module):
                 m.bias.data.zero_()
 
 
-def build_decoder(num_classes, backbone, BatchNorm, separate):
-    return Decoder(num_classes, backbone, BatchNorm, separate)
+def build_decoder(num_classes, backbone, BatchNorm, args, separate):
+    return Decoder(num_classes, backbone, BatchNorm, args, separate)
