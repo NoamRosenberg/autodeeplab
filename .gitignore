@@ -15,3 +15,6 @@ modeling/__pycache__/__init__.cpython-37.pyc
 modeling/__pycache__/aspp.cpython-37.pyc
 __pycache__/new_model.cpython-37.pyc
 __pycache__/cell_level_search.cpython-37.pyc
+test.py
+__pycache__/auto_deeplab.cpython-37.pyc
+__pycache__/decoding_formulas.cpython-37.pyc
