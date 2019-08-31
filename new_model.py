@@ -235,3 +235,4 @@ def get_arch():
 def get_default_net(filter_multiplier=8):
     net_arch, cell_arch = get_arch()
     return newModel(net_arch, cell_arch, 19, 12, filter_multiplier=filter_multiplier)
+ 
