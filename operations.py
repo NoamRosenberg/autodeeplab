@@ -31,7 +31,8 @@ class DilConv(nn.Module):
     super(DilConv, self).__init__()
     self.op = nn.Sequential(
       nn.ReLU(inplace=False),
-      nn.Conv2d(C_in, C_out, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, bias=False),
+      nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, dilation=dilation, bias=False),
+      nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
       nn.BatchNorm2d(C_out, affine=affine),
       )
 
@@ -46,9 +47,14 @@ class SepConv(nn.Module):
     self.op = nn.Sequential(
       nn.ReLU(inplace=False),
       nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
+      nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
+      nn.BatchNorm2d(C_in, affine=affine),
+      nn.ReLU(inplace=False),
+      nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
       nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
       nn.BatchNorm2d(C_out, affine=affine),
       )
+
 
   def forward(self, x):
     return self.op(x)
@@ -76,13 +82,29 @@ class Zero(nn.Module):
 
 
 class FactorizedReduce(nn.Module):
-
+#TODO: why conv1 and conv2 in two parts ?
   def __init__(self, C_in, C_out, affine=True):
     super(FactorizedReduce, self).__init__()
     assert C_out % 2 == 0
     self.relu = nn.ReLU(inplace=False)
     self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
     self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
+    self.bn = nn.BatchNorm2d(C_out, affine=affine)
+
+  def forward(self, x):
+    x = self.relu(x)
+    out = torch.cat([self.conv_1(x), self.conv_2(x[:,:,1:,1:])], dim=1)
+    out = self.bn(out)
+    return out
+
+class DoubleFactorizedReduce(nn.Module):
+#TODO: why conv1 and conv2 in two parts ?
+  def __init__(self, C_in, C_out, affine=True):
+    super(DoubleFactorizedReduce, self).__init__()
+    assert C_out % 2 == 0
+    self.relu = nn.ReLU(inplace=False)
+    self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
+    self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
     self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
   def forward(self, x):
@@ -105,11 +127,23 @@ class FactorizedIncrease (nn.Module) :
     def forward (self, x) :
         return self.op (x)
 
+class DoubleFactorizedIncrease (nn.Module) :
+    def __init__ (self, in_channel, out_channel) :
+        super(DoubleFactorizedIncrease, self).__init__()
 
+        self._in_channel = in_channel
+        self.op = nn.Sequential (
+            nn.Upsample(scale_factor=4, mode="bilinear"),
+            nn.ReLU(inplace = False),
+            nn.Conv2d(self._in_channel, out_channel, 1, stride=1, padding=0),
+            nn.BatchNorm2d(out_channel)
+        )
+    def forward (self, x) :
+        return self.op (x)
 
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels, paddings, dilations):
-        # todo depthwise separable conv
+
         super(ASPP, self).__init__()
         self.conv11 = nn.Sequential(nn.Conv2d(in_channels, in_channels, 1, bias=False, ),
                                     nn.BatchNorm2d(in_channels))

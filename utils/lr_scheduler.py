@@ -52,8 +52,9 @@ class LR_Scheduler(object):
         else:
             raise NotImplemented
         # warm up lr schedule
-        if lr < self.min_lr:
-            lr = self.min_lr
+        if self.min_lr is not None:
+            if lr < self.min_lr:
+                lr = self.min_lr
         if self.warmup_iters > 0 and T < self.warmup_iters:
             lr = lr * 1.0 * T / self.warmup_iters
         if epoch > self.epoch:

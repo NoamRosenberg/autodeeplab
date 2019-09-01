@@ -115,8 +115,9 @@ def get_new_network_cell() :
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
     load_model = Loader(args)
-    result_paths, _ = load_model.decode_architecture()
+    result_paths, result_paths_space = load_model.decode_architecture()
     network_path = result_paths.numpy()
+    network_path_space = result_paths_space.numpy()
     genotype = load_model.decode_cell()
 
     print ('architecture search results:',network_path)
@@ -124,8 +125,10 @@ def get_new_network_cell() :
 
     dir_name = os.path.dirname(args.resume)
     network_path_filename = os.path.join(dir_name,'network_path')
+    network_path_space_filename = os.path.join(dir_name, 'network_path_space')
     genotype_filename = os.path.join(dir_name, 'genotype')
     np.save(network_path_filename, network_path)
+    np.save(network_path_space_filename, network_path_space)
     np.save(genotype_filename, genotype)
 
     print('saved to :', dir_name)

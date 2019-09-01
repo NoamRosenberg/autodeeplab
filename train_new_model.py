@@ -13,10 +13,10 @@ from utils.lr_scheduler import LR_Scheduler
 from utils.saver import Saver
 from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
-from new_model import newmodel
+from new_model import newModel
 
 class trainNew(object):
-    def __init__(self, args, new_network_arch, new_cell_arch):
+    def __init__(self, args):
         self.args = args
 
         # Define Saver
@@ -30,18 +30,26 @@ class trainNew(object):
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
 
+        cell_path = os.path.join(args.saved_arch_path, 'genotype.npy')
+        network_path_space = os.path.join(args.saved_arch_path, 'network_path_space.npy')
+
+        new_cell_arch = np.load(cell_path)
+        new_network_arch = np.load(network_path_space)
+
         # Define network
-        model = newModel(new_network= new_network_arch,
-                        new_cell = new_cell_arch,
-                        num_classes=self.nclass,
-                        backbone=args.backbone,
-                        output_stride=args.out_stride,
-                        sync_bn=args.sync_bn,
-                        freeze_bn=args.freeze_bn)
-
-        train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
-                        {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
-
+        model = newModel(network_arch= new_network_arch,
+                         cell_arch = new_cell_arch,
+                         num_classes=self.nclass,
+                         num_layers=12)
+#                        output_stride=args.out_stride,
+#                        sync_bn=args.sync_bn,
+#                        freeze_bn=args.freeze_bn)
+        # TODO: look into these
+        # TODO: ALSO look into different param groups as done int deeplab below
+#        train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
+#                        {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
+#
+        train_params = [{'params': model.parameters(), 'lr': args.lr}]
         # Define Optimizer
         optimizer = torch.optim.SGD(train_params, momentum=args.momentum,
                                     weight_decay=args.weight_decay, nesterov=args.nesterov)
@@ -64,7 +72,7 @@ class trainNew(object):
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
-                                      args.epochs, len(self.train_loader))
+                                      args.epochs, len(self.train_loader)) #TODO: use min_lr ?
 
         # TODO: Figure out if len(self.train_loader) should be devided by two ? in other module as well
         # Using cuda
@@ -200,17 +208,17 @@ def main():
                         help='backbone name (default: resnet)')
     parser.add_argument('--out-stride', type=int, default=16,
                         help='network output stride (default: 8)')
-    parser.add_argument('--dataset', type=str, default='pascal',
+    parser.add_argument('--dataset', type=str, default='cityscapes',
                         choices=['pascal', 'coco', 'cityscapes'],
                         help='dataset name (default: pascal)')
     parser.add_argument('--use-sbd', action='store_true', default=True,
                         help='whether to use SBD dataset (default: True)')
     parser.add_argument('--workers', type=int, default=4,
                         metavar='N', help='dataloader threads')
-    parser.add_argument('--base-size', type=int, default=513,
-                        help='base image size')
-    parser.add_argument('--crop-size', type=int, default=513,
+    parser.add_argument('--crop_size', type=int, default=320,
                         help='crop image size')
+    parser.add_argument('--resize', type=int, default=512,
+                        help='resize image size')
     parser.add_argument('--sync-bn', type=bool, default=None,
                         help='whether to use sync bn (default: auto)')
     parser.add_argument('--freeze-bn', type=bool, default=False,
@@ -254,6 +262,8 @@ def main():
     # checking point
     parser.add_argument('--resume', type=str, default=None,
                         help='put the path to resuming file if needed')
+    parser.add_argument('--saved-arch-path', type=str, default=None,
+                        help='put the path to alphas and betas')
     parser.add_argument('--checkname', type=str, default=None,
                         help='set the checkpoint name')
     # finetuning pre-trained models
@@ -264,6 +274,11 @@ def main():
                         help='evaluuation interval (default: 1)')
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
+    parser.add_argument('--filter_multiplier', type=int, default=20)
+    parser.add_argument('--autodeeplab', type=str, default='train',
+                        choices=['search', 'train'])
+    parser.add_argument('--load-parallel', type=int, default=0)
+    parser.add_argument('--min_lr', type=float, default=0.001) #TODO: CHECK THAT THEY EVEN DO THIS FOR THE MODEL IN THE PAPER
 
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
