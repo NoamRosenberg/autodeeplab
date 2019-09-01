@@ -17,6 +17,19 @@ from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
 from auto_deeplab import AutoDeeplab
 from architect import Architect
+import apex
+try:
+    from apex import amp
+    APEX_AVAILABLE = True
+except ModuleNotFoundError:
+    APEX_AVAILABLE = False
+
+
+print('working with pytorch version {}'.format(torch.__version__))
+print('with cuda version {}'.format(torch.version.cuda))
+print('cudnn enabled: {}'.format(torch.backends.cudnn.enabled))
+print('cudnn version: {}'.format(torch.backends.cudnn.version()))
+
 torch.backends.cudnn.benchmark = True
 
 class Trainer(object):
@@ -29,6 +42,8 @@ class Trainer(object):
         # Define Tensorboard Summary
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
+        self.use_amp = True if APEX_AVAILABLE else False
+        self.opt_level = args.opt_level
 
         kwargs = {'num_workers': args.workers, 'pin_memory': True, 'drop_last':True}
         self.train_loaderA, self.train_loaderB, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
@@ -56,21 +71,55 @@ class Trainer(object):
             )
 
         self.model, self.optimizer = model, optimizer
+
+        self.architect_optimizer = torch.optim.Adam(self.model.arch_parameters(),
+                                                    lr=args.arch_lr, betas=(0.9, 0.999),
+                                                    weight_decay=args.arch_weight_decay)
+
         # Define Evaluator
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
                                       args.epochs, len(self.train_loaderA), min_lr=args.min_lr)
         # TODO: Figure out if len(self.train_loader) should be devided by two ? in other module as well
-
-
         # Using cuda
         if args.cuda:
-            if (torch.cuda.device_count() > 1 or args.load_parallel):
-                self.model = torch.nn.DataParallel(self.model.cuda())
-                patch_replication_callback(self.model)
             self.model = self.model.cuda()
-            print ('cuda finished')
+
+
+        # mixed precision
+        if self.use_amp and args.cuda:
+            keep_batchnorm_fp32 = True if (self.opt_level == 'O2' or self.opt_level == 'O3') else None
+
+            # fix for current pytorch version with opt_level 'O1'
+            if self.opt_level == 'O1' and torch.__version__ < '1.3':
+                for module in self.model.modules():
+                    if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
+                        # Hack to fix BN fprop without affine transformation
+                        if module.weight is None:
+                            module.weight = torch.nn.Parameter(
+                                torch.ones(module.running_var.shape, dtype=module.running_var.dtype,
+                                           device=module.running_var.device), requires_grad=False)
+                        if module.bias is None:
+                            module.bias = torch.nn.Parameter(
+                                torch.zeros(module.running_var.shape, dtype=module.running_var.dtype,
+                                            device=module.running_var.device), requires_grad=False)
+
+            # print(keep_batchnorm_fp32)
+            self.model, [self.optimizer, self.architect_optimizer] = amp.initialize(
+                self.model, [self.optimizer, self.architect_optimizer], opt_level=self.opt_level,
+                keep_batchnorm_fp32=keep_batchnorm_fp32, loss_scale="dynamic")
+
+            print('cuda finished')
+
+
+        # Using data parallel
+        if args.cuda and len(self.args.gpu_ids) >1:
+            if self.opt_level == 'O2' or self.opt_level == 'O3':
+                print('currently cannot run with nn.DataParallel and optimization level', self.opt_level)
+            self.model = torch.nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
+            patch_replication_callback(self.model)
+            print('training on multiple-GPUs')
 
         #checkpoint = torch.load(args.resume)
         #print('about to load state_dict')
@@ -78,7 +127,6 @@ class Trainer(object):
         #print('model loaded')
         #sys.exit()
 
-        self.architect = Architect (self.model, args)
         # Resuming checkpoint
         self.best_pred = 0.0
         if args.resume is not None:
@@ -127,7 +175,11 @@ class Trainer(object):
             self.optimizer.zero_grad()
             output = self.model(image)
             loss = self.criterion(output, target)
-            loss.backward()
+            if self.use_amp:
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            else:
+                loss.backward()
             self.optimizer.step()
 
             if epoch >= self.args.alpha_epoch:
@@ -135,7 +187,16 @@ class Trainer(object):
                 image_search, target_search = search['image'], search['label']
                 if self.args.cuda:
                     image_search, target_search = image_search.cuda (), target_search.cuda ()
-                self.architect.step (image_search, target_search)
+
+                self.architect_optimizer.zero_grad()
+                output_search = self.model(image_search)
+                arch_loss = self.criterion(output_search, target_search)
+                if self.use_amp:
+                    with amp.scale_loss(arch_loss, self.architect_optimizer) as arch_scaled_loss:
+                        arch_scaled_loss.backward()
+                else:
+                    arch_loss.backward()
+                self.architect_optimizer.step()
 
             train_loss += loss.item()
             tbar.set_description('Train loss: %.3f' % (train_loss / (i + 1)))
@@ -221,7 +282,12 @@ def main():
     parser.add_argument('--backbone', type=str, default='resnet',
                         choices=['resnet', 'xception', 'drn', 'mobilenet'],
                         help='backbone name (default: resnet)')
-    parser.add_argument('--dataset', type=str, default='cityscapes',
+    parser.add_argument('--opt_level', type=str, default='O0',
+                        choices=['O0', 'O1', 'O2', 'O3'],
+                        help='opt level for half percision training (default: O0)')
+    parser.add_argument('--out-stride', type=int, default=16,
+                        help='network output stride (default: 8)')
+    parser.add_argument('--dataset', type=str, default='kd',
                         choices=['pascal', 'coco', 'cityscapes', 'kd'],
                         help='dataset name (default: pascal)')
     parser.add_argument('--autodeeplab', type=str, default='search',
