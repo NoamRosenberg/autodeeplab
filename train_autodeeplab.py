@@ -42,7 +42,7 @@ class Trainer(object):
         # Define Tensorboard Summary
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
-        self.use_amp = True if APEX_AVAILABLE else False
+        self.use_amp = True if (APEX_AVAILABLE and args.use_amp) else False
         self.opt_level = args.opt_level
 
         kwargs = {'num_workers': args.workers, 'pin_memory': True, 'drop_last':True}
@@ -351,6 +351,9 @@ def main():
     # cuda, seed and logging
     parser.add_argument('--no-cuda', action='store_true', default=
                         False, help='disables CUDA training')
+  
+    parser.add_argument('--use_amp', action='store_true', default=
+                        False)  
     parser.add_argument('--gpu-ids', type=str, default='0',
                         help='use which gpu to train, must be a \
                         comma-separated list of integers only (default=0)')
