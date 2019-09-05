@@ -317,7 +317,7 @@ class AutoDeeplab (nn.Module) :
 
                 level8_new = normalized_betas8[layer - 2][0] * level8_new_1 + normalized_betas8[layer - 2][1] * level8_new_2 + normalized_betas8[layer - 2][2] * level8_new_3
 
-                level16_new_1, layer16_new_2, layer16_new_3 = self.cells[count] (self.level_16[-2],
+                level16_new_1, level16_new_2, level16_new_3 = self.cells[count] (self.level_16[-2],
                                                                                  self.level_8[-1],
                                                                                  self.level_16[-1],
                                                                                  self.level_32[-1],
