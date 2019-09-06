@@ -8,7 +8,8 @@ class Architect () :
         self.network_momentum = args.momentum
         self.network_weight_decay = args.weight_decay
         self.model = model
-        self.optimizer = torch.optim.Adam(self.model.arch_parameters(),
+        self.criterion = self.model.module._criterion
+        self.optimizer = torch.optim.Adam(self.model.module.arch_parameters(),
             lr=args.arch_lr, betas=(0.9, 0.999), weight_decay=args.arch_weight_decay)
 
     def step (self, input_valid, target_valid) :
@@ -17,8 +18,8 @@ class Architect () :
         self.optimizer.step()
 
     def _backward_step (self, input_valid, target_valid) :
-        loss = self.model._loss (input_valid, target_valid)
+        # loss = self.model._loss (input_valid, target_valid)
+        output_valid = self.model(input_valid)
+        loss = self.criterion(output_valid,target_valid)
         loss.backward ()
-
-
 

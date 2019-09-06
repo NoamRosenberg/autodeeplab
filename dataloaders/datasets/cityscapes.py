@@ -15,8 +15,10 @@ def twoTrainSeg(args, root=Path.db_root_dir('cityscapes')):
      for filename in filenames if filename.endswith('.png')]
     number_images = len(train_files)
     permuted_indices_ls = np.random.permutation(number_images)
-    indices_1 = permuted_indices_ls[: int(0.5 * number_images)]
+    indices_1 = permuted_indices_ls[: int(0.5 * number_images) + 1]
     indices_2 = permuted_indices_ls[int(0.5 * number_images):]
+    if len(indices_1) % 2 != 0 or len(indices_2) % 2 != 0:
+        raise Exception('indices lists need to be even numbers for batch norm')
     return CityscapesSegmentation(args, split='train', indices_for_split=indices_1), CityscapesSegmentation(args, split='train', indices_for_split=indices_2)
 
 
