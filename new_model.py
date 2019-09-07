@@ -7,6 +7,9 @@ from genotypes import Genotype
 import torch.nn.functional as F
 import numpy as np
 from operations import *
+from modeling.decoder import *
+from modeling.aspp import ASPP_train
+
 
 
 
@@ -87,7 +90,7 @@ class Cell(nn.Module):
 
 
 class newModel (nn.Module):
-    def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion=None, filter_multiplier=8, block_multiplier=5, step=5, cell=Cell, full_net='deeplab_v3+'):
+    def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion=None, filter_multiplier=20, block_multiplier=5, step=5, cell=Cell, full_net='deeplab_v3+'):
         super(newModel, self).__init__()
 
         self.cells = nn.ModuleList()
@@ -157,14 +160,14 @@ class newModel (nn.Module):
 
             self.cells += [_cell]
 
-        if self._full_net is None:
-            last_level_option = torch.sum(self.network_arch[-1], dim=1)
-            last_level = torch.argmax(last_level_option).item()
-            aspp_num_input_channels = self._block_multiplier * \
-                self._filter_multiplier * filter_param_dict[last_level]
-            atrous_rate = int(96 / (filter_param_dict[last_level] * 4))
-            self.aspp = ASPP(aspp_num_input_channels, self._num_classes,
-                             atrous_rate, atrous_rate)  # 96 / 4 as in the paper
+        # if self._full_net is None:
+        #     last_level_option = torch.sum(self.network_arch[-1], dim=1)
+        #     last_level = torch.argmax(last_level_option).item()
+            # aspp_num_input_channels = self._block_multiplier * \
+            #     self._filter_multiplier * filter_param_dict[last_level]
+            # atrous_rate = int(96 / (filter_param_dict[last_level] * 4))
+
+        self.aspp = ASPP_train('autodeeplab', 8)  # 96 / 4 as in the paper
 
     def forward(self, x):
         stem = self.stem0(x)
@@ -174,18 +177,16 @@ class newModel (nn.Module):
         for i in range(self._num_layers):
             two_last_inputs = self.cells[i](
                 two_last_inputs[0], two_last_inputs[1])
-            if i == 0:
+            if i == 2:
                 low_level_feature = two_last_inputs[1]
         last_output = two_last_inputs[-1]
 
-        if self._full_net is None:
-            aspp_result = self.aspp(last_output)
-            upsample = nn.Upsample(
-                size=x.size()[2:], mode='bilinear', align_corners=True)
-            aspp_result = upsample(aspp_result)
-            return aspp_result
-        else:
-            return last_output, low_level_feature
+        # if self._full_net is None:
+        aspp_result = self.aspp(last_output)
+            
+            # return aspp_result
+        # else:
+        return last_output, low_level_feature
 
 
 def network_layer_to_space(net_arch):
