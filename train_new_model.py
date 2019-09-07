@@ -44,6 +44,7 @@ class trainNew(object):
 #                        output_stride=args.out_stride,
 #                        sync_bn=args.sync_bn,
 #                        freeze_bn=args.freeze_bn)
+        self.decoder = Decoder(self.nclass, 'autodeeplab', args, False)
         # TODO: look into these
         # TODO: ALSO look into different param groups as done int deeplab below
 #        train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
@@ -128,7 +129,8 @@ class trainNew(object):
                 image, target = image.cuda(), target.cuda()
             self.scheduler(self.optimizer, i, epoch, self.best_pred)
             self.optimizer.zero_grad()
-            output = self.model(image)
+            encoder_output, low_level_feature = self.model(image)
+            output = self.decoder(encoder_output, low_level_feature)
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
@@ -165,7 +167,8 @@ class trainNew(object):
             if self.args.cuda:
                 image, target = image.cuda(), target.cuda()
             with torch.no_grad():
-                output = self.model(image)
+                encoder_output, low_level_feature = self.model(image)
+                output = self.decoder(encoder_output, low_level_feature)
             loss = self.criterion(output, target)
             test_loss += loss.item()
             tbar.set_description('Test loss: %.3f' % (test_loss / (i + 1)))
