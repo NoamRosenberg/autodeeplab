@@ -141,7 +141,7 @@ class DoubleFactorizedIncrease (nn.Module) :
         return self.op (x)
 
 class ASPP(nn.Module):
-    def __init__(self, in_channels, out_channels, paddings, dilations):
+    def __init__(self, in_channels, out_channels, paddings, dilations, momentum=0.0003):
 
         super(ASPP, self).__init__()
         self.conv11 = nn.Sequential(nn.Conv2d(in_channels, in_channels, 1, bias=False, ),
@@ -153,8 +153,9 @@ class ASPP(nn.Module):
                                     nn.BatchNorm2d(in_channels),
                                     nn.ReLU())
 
-        self.concate_conv = nn.Conv2d(in_channels * 3, out_channels, 1, bias=False,  stride=1, padding=0)
-
+        self.concate_conv = nn.Conv2d(in_channels * 3, in_channels, 1, bias=False,  stride=1, padding=0)
+        self.concate_bn = nn.BatchNorm2d(in_channels, momentum)
+        self.final_conv = nn.Conv2d(in_channels, out_channels, 1, bias=False,  stride=1, padding=0)
 
     def forward(self, x):
         conv11 = self.conv11(x)
@@ -169,5 +170,7 @@ class ASPP(nn.Module):
 
         # concate
         concate = torch.cat([conv11, conv33, upsample], dim=1)
-
-        return self.concate_conv(concate)
+        concate = self.concate_conv(concate)
+        concate = self.concate_bn(concate)
+        
+        return self.final_conv(concate)
