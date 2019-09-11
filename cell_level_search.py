@@ -40,19 +40,19 @@ class Cell(nn.Module):
         if prev_fmultiplier_down is not None:
             self.C_prev_down = int(prev_fmultiplier_down * block_multiplier)
             self.preprocess_down = ReLUConvBN(
-                self.C_prev_down, self.C_out, 1, 1, 0, affine=True)
+                self.C_prev_down, self.C_out, 1, 1, 0, affine=False)
         if prev_fmultiplier_same is not None:
             self.C_prev_same = int(prev_fmultiplier_same * block_multiplier)
             self.preprocess_same = ReLUConvBN(
-                self.C_prev_same, self.C_out, 1, 1, 0, affine=True)
+                self.C_prev_same, self.C_out, 1, 1, 0, affine=False)
         if prev_fmultiplier_up is not None:
             self.C_prev_up = int(prev_fmultiplier_up * block_multiplier)
             self.preprocess_up = ReLUConvBN(
-                self.C_prev_up, self.C_out, 1, 1, 0, affine=True)
+                self.C_prev_up, self.C_out, 1, 1, 0, affine=False)
 
         if prev_prev_fmultiplier != -1:
             self.pre_preprocess = ReLUConvBN(
-                self.C_prev_prev, self.C_out, 1, 1, 0, affine=True)
+                self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
 
         self._steps = steps
         self.block_multiplier = block_multiplier
