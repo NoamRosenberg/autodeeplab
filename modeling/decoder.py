@@ -26,7 +26,6 @@ class Decoder(nn.Module):
             low_level_inplanes = 256
         elif backbone == 'mobilenet':
             low_level_inplanes = 24
-
         elif backbone == 'autodeeplab':
             low_level_inplanes = args.filter_multiplier * args.steps
         else:

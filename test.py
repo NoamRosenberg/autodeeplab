@@ -7,7 +7,7 @@ from auto_deeplab import AutoDeeplab
 from thop import profile
 from torchsummary import summary
 import warnings
-
+from new_model import get_default_net
 warnings.filterwarnings('ignore')
 
 
@@ -200,16 +200,17 @@ if __name__ == "__main__":
     import torch
     # model = ResNet101(BatchNorm=nn.BatchNorm2d,
     #                   pretrained=True, output_stride=8)
-    input = torch.rand(2, 3, 128, 128).cuda()
+    input = torch.rand(2, 3, 129, 129).cuda()
     # output, low_level_feat = model(input)
     # print(output.size())
     # print(low_level_feat.size())
     args = obtain_default_train_args()
-    model = DeepLab(num_classes=19,
-                    backbone='autodeeplab',
-                    output_stride=8,
-                    sync_bn=False,
-                    freeze_bn=False, args=args, separate=False).cuda()
+    # model = DeepLab(num_classes=19,
+    #                 backbone='autodeeplab',
+    #                 output_stride=8,
+    #                 sync_bn=False,
+    #                 freeze_bn=False, args=args, separate=False).cuda()
+    model = get_default_net().cuda()
     # args = obtain_default_search_args()
     # criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
     # model = AutoDeeplab(num_classes=19, num_layers=12, criterion=criterion, filter_multiplier=args.filter_multiplier,
@@ -217,7 +218,8 @@ if __name__ == "__main__":
     
 
     output = model(input)
-    print(output.shape)
+    print(output[0].shape)
+    print(output[1].shape)
     # model.backbone(input)
     total_params(model)
     # print(model.backbone.cells[1])

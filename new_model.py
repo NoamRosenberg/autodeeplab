@@ -46,7 +46,7 @@ class Cell(nn.Module):
 
 
     def scale_dimension(self, dim, scale):
-        return int((float(dim) - 1.0) * scale + 1.0)
+        return (int((float(dim) - 1.0) * scale + 1.0) if dim % 2 == 1 else int((float(dim) * scale)))
 
     def forward(self, prev_prev_input, prev_input):
 
@@ -178,8 +178,8 @@ class newModel (nn.Module):
                 two_last_inputs[0], two_last_inputs[1])
             if i == 2:
                 low_level_feature = two_last_inputs[1]
+            print(two_last_inputs[-1].shape)
         last_output = two_last_inputs[-1]
-
         if self._full_net is None:
             aspp_result = self.aspp(last_output)
             return aspp_result
