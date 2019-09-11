@@ -160,14 +160,13 @@ class newModel (nn.Module):
 
             self.cells += [_cell]
 
-        # if self._full_net is None:
-        #     last_level_option = torch.sum(self.network_arch[-1], dim=1)
-        #     last_level = torch.argmax(last_level_option).item()
-            # aspp_num_input_channels = self._block_multiplier * \
-            #     self._filter_multiplier * filter_param_dict[last_level]
-            # atrous_rate = int(96 / (filter_param_dict[last_level] * 4))
-
-        self.aspp = ASPP_train('autodeeplab', 8)  # 96 / 4 as in the paper
+        if self._full_net is None:
+            last_level_option = torch.sum(self.network_arch[-1], dim=1)
+            last_level = torch.argmax(last_level_option).item()
+            aspp_num_input_channels = self._block_multiplier * \
+                self._filter_multiplier * filter_param_dict[last_level]
+            atrous_rate = int(96 / (filter_param_dict[last_level] * 4))
+            self.aspp = ASPP_train('autodeeplab', 8)  # 96 / 4 as in the paper
 
     def forward(self, x):
         stem = self.stem0(x)
@@ -181,10 +180,9 @@ class newModel (nn.Module):
                 low_level_feature = two_last_inputs[1]
         last_output = two_last_inputs[-1]
 
-        # if self._full_net is None:
-        aspp_result = self.aspp(last_output)
-            
-            # return aspp_result
+        if self._full_net is None:
+            aspp_result = self.aspp(last_output)
+            return aspp_result
         # else:
         return last_output, low_level_feature
 
