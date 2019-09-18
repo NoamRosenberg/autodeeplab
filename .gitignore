@@ -17,3 +17,4 @@ __pycache__/new_model.cpython-37.pyc
 __pycache__/cell_level_search.cpython-37.pyc
 __pycache__/auto_deeplab.cpython-37.pyc
 __pycache__/decoding_formulas.cpython-37.pyc
+utils/__pycache__/copy_state_dict.cpython-37.pyc
