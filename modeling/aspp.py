@@ -49,7 +49,7 @@ class _ASPPModule(nn.Module):
 
 class ASPP_train(nn.Module):
     def __init__(self, backbone, output_stride, filter_multiplier=20, steps=5, BatchNorm=nn.BatchNorm2d, separate=False):
-        super(ASPP, self).__init__()
+        super(ASPP_train, self).__init__()
         if backbone == 'drn':
             inplanes = 512
         elif backbone == 'mobilenet':
@@ -117,4 +117,4 @@ class ASPP_train(nn.Module):
 
 
 def build_aspp(backbone, output_stride, BatchNorm, args, separate):
-    return ASPP(backbone, output_stride, BatchNorm, args, separate)
+    return ASPP_train(backbone, output_stride, args.filter_multiplier, 5, BatchNorm, separate)
