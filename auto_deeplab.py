@@ -166,11 +166,12 @@ class AutoDeeplab (nn.Module) :
 
         count = 0
         normalized_betas = [[[0]*3]*4]*12
-        #Softmax on alphas and betas
+        # Softmax on alphas and betas
         if torch.cuda.device_count() > 1:
             img_device = torch.device('cuda', x.get_device())
             normalized_alphas = F.softmax(self.alphas.to(device=img_device), dim=-1)
-
+            
+            # normalized_betas[layer][ith node][0 : ➚, 1: ➙, 2 : ➘]
             for layer in range (len(self.betas)):
                 if layer == 0:
                     normalized_betas[layer][0][1:] = F.softmax (self.betas[layer][0][1:].to(device=img_device), dim=-1)
