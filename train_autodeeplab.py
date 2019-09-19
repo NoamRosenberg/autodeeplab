@@ -17,6 +17,7 @@ from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
 from auto_deeplab import AutoDeeplab
 from architect import Architect
+from utils.copy_state_dict import copy_state_dict
 import apex
 try:
     from apex import amp
@@ -143,17 +144,21 @@ class Trainer(object):
                 for k, v in state_dict.items():
                     name = k[7:]  # remove 'module.' of dataparallel
                     new_state_dict[name] = v
-                self.model.load_state_dict(new_state_dict)
+                # self.model.load_state_dict(new_state_dict)
+                copy_state_dict(self.model.state_dict(), new_state_dict)
 
             else:
                 if (torch.cuda.device_count() > 1 or args.load_parallel):
-                    self.model.module.load_state_dict(checkpoint['state_dict'])
+                    # self.model.module.load_state_dict(checkpoint['state_dict'])
+                    copy_state_dict(self.model.module.state_dict(), checkpoint['state_dict'])
                 else:
-                    self.model.load_state_dict(checkpoint['state_dict'])
+                    # self.model.load_state_dict(checkpoint['state_dict'])
+                    copy_state_dict(self.model.state_dict(), checkpoint['state_dict'])
 
 
             if not args.ft:
-                self.optimizer.load_state_dict(checkpoint['optimizer'])
+                # self.optimizer.load_state_dict(checkpoint['optimizer'])
+                copy_state_dict(self.optimizer.state_dict(), checkpoint['optimizer'])
             self.best_pred = checkpoint['best_pred']
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
