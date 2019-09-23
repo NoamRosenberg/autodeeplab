@@ -11,22 +11,22 @@ def SeparateConv(C_in, C_out, kernel_size, stride, padding, dilation, bias):
                          nn.BatchNorm2d(C_in),
                          nn.ReLU(),
                          nn.Conv2d(
-        C_in, C_out, kernel_size=1, padding=0, bias=False)
-    )
+                             C_in, C_out, kernel_size=1, padding=0, bias=False)
+                         )
 
 
 class _ASPPModule(nn.Module):
     def __init__(self, inplanes, planes, kernel_size, padding, dilation, BatchNorm, separate=False):
         super(_ASPPModule, self).__init__()
-        if separate == True:
+        if separate:
             self.atrous_conv = SeparateConv(
                 inplanes, planes, kernel_size, 1, padding, dilation, False)
         else:
             self.atrous_conv = nn.Conv2d(inplanes, planes, kernel_size=kernel_size,
                                          stride=1, padding=padding, dilation=dilation, bias=False)
         self.bn = BatchNorm(planes)
-        self.relu = nn.ReLU()
-
+        if BatchNorm == nn.BatchNorm2d:
+            self.bn = nn.Sequential(self.bn, nn.ReLU(inplace=False))
         self._init_weight()
 
     def forward(self, x):
@@ -48,7 +48,8 @@ class _ASPPModule(nn.Module):
 
 
 class ASPP_train(nn.Module):
-    def __init__(self, backbone, output_stride, filter_multiplier=20, steps=5, BatchNorm=nn.BatchNorm2d, separate=False):
+    def __init__(self, backbone, output_stride, filter_multiplier=20, steps=5,
+                 BatchNorm=nn.BatchNorm2d, separate=False, use_ABN=False):
         super(ASPP_train, self).__init__()
         if backbone == 'drn':
             inplanes = 512
@@ -92,7 +93,7 @@ class ASPP_train(nn.Module):
         x4 = self.aspp4(x)
         x5 = self.global_avg_pool(x)
         x5 = F.interpolate(x5, size=x1.size()[
-                           2:], mode='bilinear', align_corners=True)
+                                    2:], mode='bilinear', align_corners=True)
         x = torch.cat((x1, x2, x3, x4, x5), dim=1)
 
         x = self.conv1(x)

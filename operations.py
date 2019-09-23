@@ -1,162 +1,277 @@
 import torch
 import torch.nn as nn
+import platform
+from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
+
+# TODO: NOW I DONT KNOW HOW TO USE ABN ON WINDOWS SYSTEM
+
+if platform.system() == 'Windows':
+    class ABN(nn.Module):
+        def __init__(self, C_out):
+            super(ABN, self).__init__()
+            self.op = nn.Sequential(
+                nn.BatchNorm2d(C_out),
+                nn.ReLU(inplace=False)
+            )
+
+        def forward(self, x):
+            return self.op(x)
+else:
+    from modeling.modules import InPlaceABNSync as ABN
 
 OPS = {
-  'none' : lambda C, stride, affine: Zero(stride),
-  'avg_pool_3x3' : lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
-  'max_pool_3x3' : lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
-  'skip_connect' : lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
-  'sep_conv_3x3' : lambda C, stride, affine: SepConv(C, C, 3, stride, 1, affine=affine),
-  'sep_conv_5x5' : lambda C, stride, affine: SepConv(C, C, 5, stride, 2, affine=affine),
-  'dil_conv_3x3' : lambda C, stride, affine: DilConv(C, C, 3, stride, 2, 2, affine=affine),
-  'dil_conv_5x5' : lambda C, stride, affine: DilConv(C, C, 5, stride, 4, 2, affine=affine),
+    'none': lambda C, stride, affine, separate, use_ABN: Zero(stride),
+    'avg_pool_3x3': lambda C, stride, affine, separate, use_ABN: nn.AvgPool2d(3, stride=stride, padding=1,
+                                                                              count_include_pad=False),
+    'max_pool_3x3': lambda C, stride, affine, separate, use_ABN: nn.MaxPool2d(3, stride=stride, padding=1),
+    'skip_connect': lambda C, stride, affine, separate, use_ABN: Identity() if stride == 1 else FactorizedReduce(C, C,
+                                                                                                                 affine=affine),
+    'sep_conv_3x3': lambda C, stride, affine, separate, use_ABN: SepConv(C, C, 3, stride, 1, affine=affine),
+    'sep_conv_5x5': lambda C, stride, affine, separate, use_ABN: SepConv(C, C, 5, stride, 2, affine=affine),
+    'dil_conv_3x3': lambda C, stride, affine, separate, use_ABN: DilConv(C, C, 3, stride, 2, 2, affine=affine,
+                                                                         separate=separate, use_ABN=use_ABN),
+    'dil_conv_5x5': lambda C, stride, affine, separate, use_ABN: DilConv(C, C, 5, stride, 4, 2, affine=affine,
+                                                                         seperate=separate, use_ABN=use_ABN),
 }
+
 
 class ReLUConvBN(nn.Module):
 
-  def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
-    super(ReLUConvBN, self).__init__()
-    self.op = nn.Sequential(
-      nn.ReLU(inplace=False),
-      nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
-      nn.BatchNorm2d(C_out, affine=affine)
-    )
+    def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True, use_ABN=False):
+        super(ReLUConvBN, self).__init__()
+        if use_ABN:
+            self.op = nn.Sequential(
+                nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
+                ABN(C_out)
+            )
 
-  def forward(self, x):
-    return self.op(x)
+        else:
+            self.op = nn.Sequential(
+                nn.ReLU(inplace=False),
+                nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
+                nn.BatchNorm2d(C_out, affine=affine)
+            )
+
+    def forward(self, x):
+        return self.op(x)
+
 
 class DilConv(nn.Module):
 
-  def __init__(self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True):
-    super(DilConv, self).__init__()
-    self.op = nn.Sequential(
-      nn.ReLU(inplace=False),
-      nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=C_in, bias=False),
-      nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-      nn.BatchNorm2d(C_out),
-      )
+    def __init__(self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True, seperate=True, use_ABN=False):
+        super(DilConv, self).__init__()
+        if use_ABN:
+            if seperate:
+                self.op = nn.Sequential(
+                    nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation,
+                              groups=C_in, bias=False),
+                    nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+                    ABN(C_out, affine=affine),
+                )
+            else:
+                self.op = nn.Sequential(
+                    nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride,
+                              padding=padding, dilation=dilation, bias=False),
+                    nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+                    ABN(C_out, affine=affine),
+                )
 
-  def forward(self, x):
-    return self.op(x)
+        else:
+            if seperate:
+                self.op = nn.Sequential(
+                    nn.ReLU(inplace=False),
+                    nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation,
+                              groups=C_in, bias=False),
+                    nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+                    nn.BatchNorm2d(C_out, affine=affine),
+                )
+            else:
+                self.op = nn.Sequential(
+                    nn.ReLU(inplace=False),
+                    nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride,
+                              padding=padding, dilation=dilation, bias=False),
+                    nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+                    nn.BatchNorm2d(C_out, affine=affine),
+                )
+
+    def forward(self, x):
+        return self.op(x)
 
 
 class SepConv(nn.Module):
 
-  def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
-    super(SepConv, self).__init__()
-    self.op = nn.Sequential(
-      nn.ReLU(inplace=False),
-      nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
-      nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
-      nn.BatchNorm2d(C_in, affine=affine),
-      nn.ReLU(inplace=False),
-      nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
-      nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-      nn.BatchNorm2d(C_out, affine=affine),
-      )
+    def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True, use_ABN=False):
+        super(SepConv, self).__init__()
+        if use_ABN:
+            self.op = nn.Sequential(
+                nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
+                nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
+                ABN(C_in, affine=affine),
+                nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
+                nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+                ABN(C_out, affine=affine)
+            )
 
+        else:
+            self.op = nn.Sequential(
+                nn.ReLU(inplace=False),
+                nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
+                nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
+                nn.BatchNorm2d(C_in, affine=affine),
+                nn.ReLU(inplace=False),
+                nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
+                nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+                nn.BatchNorm2d(C_out, affine=affine),
+            )
 
-  def forward(self, x):
-    return self.op(x)
+    def forward(self, x):
+        return self.op(x)
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
 
 class Identity(nn.Module):
 
-  def __init__(self):
-    super(Identity, self).__init__()
+    def __init__(self):
+        super(Identity, self).__init__()
 
-  def forward(self, x):
-    return x
+    def forward(self, x):
+        return x
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
 
 class Zero(nn.Module):
 
-  def __init__(self, stride):
-    super(Zero, self).__init__()
-    self.stride = stride
+    def __init__(self, stride):
+        super(Zero, self).__init__()
+        self.stride = stride
 
-  def forward(self, x):
-    if self.stride == 1:
-      return x.mul(0.)
-    return x[:,:,::self.stride,::self.stride].mul(0.)
+    def forward(self, x):
+        if self.stride == 1:
+            return x.mul(0.)
+        return x[:, :, ::self.stride, ::self.stride].mul(0.)
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
 
 class FactorizedReduce(nn.Module):
-#TODO: why conv1 and conv2 in two parts ?
-  def __init__(self, C_in, C_out, affine=True):
-    super(FactorizedReduce, self).__init__()
-    assert C_out % 2 == 0
-    self.relu = nn.ReLU(inplace=False)
-    self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
-    self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
-    self.bn = nn.BatchNorm2d(C_out, affine=affine)
+    # TODO: why conv1 and conv2 in two parts ?
+    def __init__(self, C_in, C_out, affine=True):
+        super(FactorizedReduce, self).__init__()
+        assert C_out % 2 == 0
+        self.relu = nn.ReLU(inplace=False)
+        self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
+        self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
+        self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
-  def forward(self, x):
-    x = self.relu(x)
-    out = torch.cat([self.conv_1(x), self.conv_2(x[:,:,1:,1:])], dim=1)
-    out = self.bn(out)
-    return out
+    def forward(self, x):
+        x = self.relu(x)
+        out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
+        out = self.bn(out)
+        return out
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+
 
 class DoubleFactorizedReduce(nn.Module):
-#TODO: why conv1 and conv2 in two parts ?
-  def __init__(self, C_in, C_out, affine=True):
-    super(DoubleFactorizedReduce, self).__init__()
-    assert C_out % 2 == 0
-    self.relu = nn.ReLU(inplace=False)
-    self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
-    self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
-    self.bn = nn.BatchNorm2d(C_out, affine=affine)
+    # TODO: why conv1 and conv2 in two parts ?
+    def __init__(self, C_in, C_out, affine=True):
+        super(DoubleFactorizedReduce, self).__init__()
+        assert C_out % 2 == 0
+        self.relu = nn.ReLU(inplace=False)
+        self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
+        self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
+        self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
-  def forward(self, x):
-    x = self.relu(x)
-    out = torch.cat([self.conv_1(x), self.conv_2(x[:,:,1:,1:])], dim=1)
-    out = self.bn(out)
-    return out
+    def forward(self, x):
+        x = self.relu(x)
+        out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
+        out = self.bn(out)
+        return out
 
-class FactorizedIncrease (nn.Module) :
-    def __init__ (self, in_channel, out_channel) :
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+
+
+class FactorizedIncrease(nn.Module):
+    def __init__(self, in_channel, out_channel):
         super(FactorizedIncrease, self).__init__()
 
         self._in_channel = in_channel
-        self.op = nn.Sequential (
+        self.op = nn.Sequential(
             nn.Upsample(scale_factor=2, mode="bilinear"),
-            nn.ReLU(inplace = False),
+            nn.ReLU(inplace=False),
             nn.Conv2d(self._in_channel, out_channel, 1, stride=1, padding=0),
             nn.BatchNorm2d(out_channel)
         )
-    def forward (self, x) :
-        return self.op (x)
 
-class DoubleFactorizedIncrease (nn.Module) :
-    def __init__ (self, in_channel, out_channel) :
+    def forward(self, x):
+        return self.op(x)
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+
+
+class DoubleFactorizedIncrease(nn.Module):
+    def __init__(self, in_channel, out_channel):
         super(DoubleFactorizedIncrease, self).__init__()
 
         self._in_channel = in_channel
-        self.op = nn.Sequential (
+        self.op = nn.Sequential(
             nn.Upsample(scale_factor=4, mode="bilinear"),
-            nn.ReLU(inplace = False),
+            nn.ReLU(inplace=False),
             nn.Conv2d(self._in_channel, out_channel, 1, stride=1, padding=0),
             nn.BatchNorm2d(out_channel)
         )
-    def forward (self, x) :
-        return self.op (x)
+
+    def forward(self, x):
+        return self.op(x)
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+
 
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels, paddings, dilations, momentum=0.0003):
-
         super(ASPP, self).__init__()
         self.conv11 = nn.Sequential(nn.Conv2d(in_channels, in_channels, 1, bias=False, ),
                                     nn.BatchNorm2d(in_channels))
         self.conv33 = nn.Sequential(nn.Conv2d(in_channels, in_channels, 3,
-                                    padding=paddings, dilation=dilations, bias=False, ),
-                                      nn.BatchNorm2d(in_channels))
+                                              padding=paddings, dilation=dilations, bias=False, ),
+                                    nn.BatchNorm2d(in_channels))
         self.conv_p = nn.Sequential(nn.Conv2d(in_channels, in_channels, 1, bias=False, ),
                                     nn.BatchNorm2d(in_channels),
                                     nn.ReLU())
 
-        self.concate_conv = nn.Conv2d(in_channels * 3, in_channels, 1, bias=False,  stride=1, padding=0)
+        self.concate_conv = nn.Conv2d(in_channels * 3, in_channels, 1, bias=False, stride=1, padding=0)
         self.concate_bn = nn.BatchNorm2d(in_channels, momentum)
-        self.final_conv = nn.Conv2d(in_channels, out_channels, 1, bias=False,  stride=1, padding=0)
+        self.final_conv = nn.Conv2d(in_channels, out_channels, 1, bias=False, stride=1, padding=0)
 
     def forward(self, x):
         conv11 = self.conv11(x)
@@ -173,5 +288,11 @@ class ASPP(nn.Module):
         concate = torch.cat([conv11, conv33, upsample], dim=1)
         concate = self.concate_conv(concate)
         concate = self.concate_bn(concate)
-        
+
         return self.final_conv(concate)
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
