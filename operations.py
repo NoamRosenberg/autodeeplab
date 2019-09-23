@@ -55,6 +55,11 @@ class ReLUConvBN(nn.Module):
     def forward(self, x):
         return self.op(x)
 
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
 class DilConv(nn.Module):
 
@@ -97,6 +102,11 @@ class DilConv(nn.Module):
     def forward(self, x):
         return self.op(x)
 
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
 class SepConv(nn.Module):
 
