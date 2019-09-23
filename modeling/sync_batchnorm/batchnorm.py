@@ -280,3 +280,4 @@ class SynchronizedBatchNorm3d(_SynchronizedBatchNorm):
             raise ValueError('expected 5D input (got {}D input)'
                              .format(input.dim()))
         super(SynchronizedBatchNorm3d, self)._check_input_dim(input)
+

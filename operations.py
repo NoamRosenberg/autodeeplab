@@ -6,11 +6,12 @@ from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 # TODO: NOW I DONT KNOW HOW TO USE ABN ON WINDOWS SYSTEM
 
 if platform.system() == 'Windows':
+
     class ABN(nn.Module):
-        def __init__(self, C_out):
+        def __init__(self, C_out, affine=False):
             super(ABN, self).__init__()
             self.op = nn.Sequential(
-                nn.BatchNorm2d(C_out),
+                nn.BatchNorm2d(C_out, affine=affine),
                 nn.ReLU(inplace=False)
             )
 
@@ -20,19 +21,29 @@ else:
     from modeling.modules import InPlaceABNSync as ABN
 
 OPS = {
-    'none': lambda C, stride, affine, separate, use_ABN: Zero(stride),
-    'avg_pool_3x3': lambda C, stride, affine, separate, use_ABN: nn.AvgPool2d(3, stride=stride, padding=1,
-                                                                              count_include_pad=False),
-    'max_pool_3x3': lambda C, stride, affine, separate, use_ABN: nn.MaxPool2d(3, stride=stride, padding=1),
-    'skip_connect': lambda C, stride, affine, separate, use_ABN: Identity() if stride == 1 else FactorizedReduce(C, C,
-                                                                                                                 affine=affine),
-    'sep_conv_3x3': lambda C, stride, affine, separate, use_ABN: SepConv(C, C, 3, stride, 1, affine=affine),
-    'sep_conv_5x5': lambda C, stride, affine, separate, use_ABN: SepConv(C, C, 5, stride, 2, affine=affine),
-    'dil_conv_3x3': lambda C, stride, affine, separate, use_ABN: DilConv(C, C, 3, stride, 2, 2, affine=affine,
-                                                                         separate=separate, use_ABN=use_ABN),
-    'dil_conv_5x5': lambda C, stride, affine, separate, use_ABN: DilConv(C, C, 5, stride, 4, 2, affine=affine,
-                                                                         seperate=separate, use_ABN=use_ABN),
+    'none': lambda C, stride, affine, use_ABN: Zero(stride),
+    'avg_pool_3x3': lambda C, stride, affine, use_ABN: nn.AvgPool2d(3, stride=stride, padding=1,
+                                                                    count_include_pad=False),
+    'max_pool_3x3': lambda C, stride, affine, use_ABN: nn.MaxPool2d(3, stride=stride, padding=1),
+    'skip_connect': lambda C, stride, affine, use_ABN: Identity() if stride == 1 else FactorizedReduce(C, C,
+                                                                                                       affine=affine),
+    'sep_conv_3x3': lambda C, stride, affine, use_ABN: SepConv(C, C, 3, stride, 1, affine=affine),
+    'sep_conv_5x5': lambda C, stride, affine, use_ABN: SepConv(C, C, 5, stride, 2, affine=affine),
+    'dil_conv_3x3': lambda C, stride, affine, use_ABN: DilConv(C, C, 3, stride, 2, 2, affine=affine, use_ABN=use_ABN),
+    'dil_conv_5x5': lambda C, stride, affine, use_ABN: DilConv(C, C, 5, stride, 4, 2, affine=affine, use_ABN=use_ABN),
 }
+
+
+class NaiveBN(nn.Module):
+    def __init__(self, C_out, affine=True):
+        super(NaiveBN, self).__init__()
+        self.op = nn.Sequential(
+            nn.BatchNorm2d(C_out, affine=affine),
+            nn.ReLU()
+        )
+
+    def forward(self, x):
+        return self.op(x)
 
 
 class ReLUConvBN(nn.Module):
@@ -61,14 +72,17 @@ class ReLUConvBN(nn.Module):
                 nn.init.kaiming_normal_(ly.weight, a=1)
                 if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
+
 class DilConv(nn.Module):
 
-    def __init__(self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True, seperate=True, use_ABN=False):
+    def __init__(self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True, seperate=True,
+                 use_ABN=False):
         super(DilConv, self).__init__()
         if use_ABN:
             if seperate:
                 self.op = nn.Sequential(
-                    nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation,
+                    nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding,
+                              dilation=dilation,
                               groups=C_in, bias=False),
                     nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
                     ABN(C_out, affine=affine),
@@ -85,7 +99,8 @@ class DilConv(nn.Module):
             if seperate:
                 self.op = nn.Sequential(
                     nn.ReLU(inplace=False),
-                    nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation,
+                    nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding,
+                              dilation=dilation,
                               groups=C_in, bias=False),
                     nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
                     nn.BatchNorm2d(C_out, affine=affine),
@@ -108,13 +123,15 @@ class DilConv(nn.Module):
                 nn.init.kaiming_normal_(ly.weight, a=1)
                 if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
+
 class SepConv(nn.Module):
 
     def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True, use_ABN=False):
         super(SepConv, self).__init__()
         if use_ABN:
             self.op = nn.Sequential(
-                nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
+                nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in,
+                          bias=False),
                 nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
                 ABN(C_in, affine=affine),
                 nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
@@ -125,7 +142,8 @@ class SepConv(nn.Module):
         else:
             self.op = nn.Sequential(
                 nn.ReLU(inplace=False),
-                nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
+                nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in,
+                          bias=False),
                 nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
                 nn.BatchNorm2d(C_in, affine=affine),
                 nn.ReLU(inplace=False),

@@ -3,17 +3,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
+from operations import ABN
 
 
-def SeparateConv(C_in, C_out, kernel_size, stride=1, padding=0, dilation=1, bias=False):
+def SeparateConv(C_in, C_out, kernel_size, stride=1, padding=0, dilation=1, bias=False, BatchNorm=ABN):
     return nn.Sequential(nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1,
                                    padding=padding, dilation=dilation, groups=C_in, bias=False),
-                         nn.BatchNorm2d(C_in),
-                         nn.ReLU(),
-                         nn.Conv2d(C_in, C_out, kernel_size=1,
-                                   padding=0, bias=False),
-                         nn.BatchNorm2d(C_out),
-                         nn.ReLU()
+                         BatchNorm(C_in),
+                         nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+                         BatchNorm(C_out)
                          )
 
 
@@ -34,27 +32,22 @@ class Decoder(nn.Module):
         self.conv_feature = nn.Conv2d(
             low_level_inplanes, 48, 1, bias=False)
         self.bn1 = BatchNorm(48)
-        self.relu = nn.ReLU()
-        self.feature_projection = nn.Sequential(
-            self.conv_feature, self.bn1, self.relu)
+        self.feature_projection = nn.Sequential(self.conv_feature, self.bn1)
         concate_channel = 48 + 256
-        if separate == True:
-            self.conv1 = nn.Sequential(SeparateConv(concate_channel, 256, kernel_size=3, stride=1, padding=1, bias=False),
-                                       nn.Dropout(0.5))
-            self.conv2 = nn.Sequential(SeparateConv(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
-                                       nn.Dropout(0.1))
+        if separate:
+            self.conv1 = nn.Sequential(
+                SeparateConv(concate_channel, 256, kernel_size=3, stride=1, padding=1, bias=False, BatchNorm=BatchNorm),
+                nn.Dropout(0.5))
+            self.conv2 = nn.Sequential(
+                SeparateConv(256, 256, kernel_size=3, stride=1, padding=1, bias=False, BatchNorm=BatchNorm),
+                nn.Dropout(0.1))
 
         else:
             self.conv1 = nn.Sequential(nn.Conv2d(concate_channel, 256, kernel_size=3, stride=1, padding=1, bias=False),
-                                       BatchNorm(256),
-                                       nn.ReLU(),
-                                       nn.Dropout(0.5))
+                                       BatchNorm(256), )
             self.conv2 = nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
-                                       BatchNorm(256),
-                                       nn.ReLU(),
-                                       nn.Dropout(0.1))
-        self.last_linear = nn.Conv2d(
-            256, num_classes, kernel_size=1, stride=1)
+                                       BatchNorm(256), )
+        self.last_linear = nn.Conv2d(256, num_classes, kernel_size=1, stride=1)
 
         self._init_weight()
 
@@ -62,25 +55,18 @@ class Decoder(nn.Module):
 
         low_level_feat = self.feature_projection(low_level_feat)
 
-        x = F.interpolate(x, size=low_level_feat.size()[
-            2:], mode='bilinear', align_corners=True)
+        x = F.interpolate(x, size=low_level_feat.size()[2:], mode='bilinear', align_corners=True)
         x = torch.cat((x, low_level_feat), dim=1)
-        # x = self.last_conv(x)
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.last_linear(x)
         return x
 
-    def _init_weight(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                torch.nn.init.kaiming_normal_(m.weight)
-            elif isinstance(m, SynchronizedBatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
 
 def build_decoder(num_classes, backbone, BatchNorm, args, separate):

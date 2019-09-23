@@ -29,19 +29,13 @@ class _ASPPModule(nn.Module):
         x = self.atrous_conv(x)
         x = self.bn(x)
 
-        return self.relu(x)
+        return x
 
-    def _init_weight(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                torch.nn.init.kaiming_normal_(m.weight)
-            elif isinstance(m, SynchronizedBatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
 class ASPP_train(nn.Module):
     def __init__(self, backbone, output_stride, filter_multiplier=20, steps=5, BatchNorm=ABN, separate=False):
