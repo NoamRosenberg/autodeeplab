@@ -6,7 +6,7 @@ class Path(object):
         elif dataset == 'sbd':
             return '/path/to/datasets/benchmark_RELEASE/'  # folder that contains dataset/.
         elif dataset == 'cityscapes':
-            return '/data/deeplearning/cityscapes/'     # foler that contains leftImg8bit/
+            return r'E:\BaiduNetdiskDownload\cityscapes'     # foler that contains leftImg8bit/
         elif dataset == 'kd':
             return '/data/deeplearning/cityscapes/'
         elif dataset == 'coco':
