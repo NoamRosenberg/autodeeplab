@@ -1,13 +1,8 @@
-import math
 import torch
 import random
 import numpy as np
-import torch.nn as nn
-from numpy import int64 as int64
-import torchvision.transforms as transforms
 
 from PIL import Image, ImageOps, ImageFilter
-
 
 class Normalize(object):
     """Normalize a tensor image with mean and standard deviation.
@@ -15,7 +10,6 @@ class Normalize(object):
         mean (tuple): means for each channel.
         std (tuple): standard deviations for each channel.
     """
-
     def __init__(self, mean=(0., 0., 0.), std=(1., 1., 1.)):
         self.mean = mean
         self.std = std
@@ -71,7 +65,7 @@ class RandomRotate(object):
     def __call__(self, sample):
         img = sample['image']
         mask = sample['label']
-        rotate_degree = random.uniform(-1 * self.degree, self.degree)
+        rotate_degree = random.uniform(-1*self.degree, self.degree)
         img = img.rotate(rotate_degree, Image.BILINEAR)
         mask = mask.rotate(rotate_degree, Image.NEAREST)
 
@@ -154,14 +148,11 @@ class FixScaleCrop(object):
         return {'image': img,
                 'label': mask}
 
-
 # resize to 512*1024
 class FixedResize(object):
     """change the short edge length to size"""
-
     def __init__(self, resize=512):
         self.size1 = resize  # size= 512
-
     def __call__(self, sample):
         img = sample['image']
         mask = sample['label']
@@ -174,15 +165,14 @@ class FixedResize(object):
         else:
             ow = self.size1
             oh = int(1.0 * h * ow / w)
-        img = img.resize((ow, oh), Image.BILINEAR)
-        mask = mask.resize((ow, oh), Image.NEAREST)
+        img = img.resize((ow,oh), Image.BILINEAR)
+        mask = mask.resize((ow,oh), Image.NEAREST)
         return {'image': img,
                 'label': mask}
 
-
-# random crop 321*321
+ # random crop 321*321
 class RandomCrop(object):
-    def __init__(self, crop_size=320):
+    def __init__(self,  crop_size=320):
         self.crop_size = crop_size
 
     def __call__(self, sample):
@@ -195,108 +185,3 @@ class RandomCrop(object):
         mask = mask.crop((x1, y1, x1 + self.crop_size, y1 + self.crop_size))
         return {'image': img,
                 'label': mask}
-
-
-class Retrain_Preprocess(object):
-    def __init__(self, flip_prob, scale_range, crop, mean, std):
-        self.flip_prob = flip_prob
-        self.scale_range = scale_range
-        self.crop = crop
-        self.data_transforms = transforms.Compose([transforms.ToTensor(),
-                                                   transforms.Normalize(mean=mean, std=std)])
-
-    def __call__(self, sample):
-        if self.flip_prob is not None and random.random() < self.flip_prob:
-            sample['image'] = sample['image'].transpose(Image.FLIP_LEFT_RIGHT)
-            sample['label'] = sample['label'].transpose(Image.FLIP_LEFT_RIGHT)
-
-        if self.scale_range is not None:
-            w, h = sample['image'].size
-            rand_log_scale = math.log(self.scale_range[0], 2) + random.random() * \
-                             (math.log(self.scale_range[1], 2) - math.log(self.scale_range[0], 2))
-            random_scale = math.pow(2, rand_log_scale)
-            new_size = (int(round(w * random_scale)), int(round(h * random_scale)))
-            sample['image'] = sample['image'].resize(new_size, Image.ANTIALIAS)
-            sample['label'] = sample['label'].resize(new_size, Image.NEAREST)
-        sample['image'] = self.data_transforms(sample['image'])
-        sample['label'] = torch.LongTensor(np.array(sample['label']).astype(int64))
-
-        if self.crop:
-            image, mask = sample['image'], sample['label']
-            h, w = image.shape[1], image.shape[2]
-            pad_tb = max(0, self.crop[0] - h)
-            pad_lr = max(0, self.crop[1] - w)
-            image = nn.ZeroPad2d((0, pad_lr, 0, pad_tb))(image)
-            mask = nn.ConstantPad2d((0, pad_lr, 0, pad_tb), 255)(mask)
-
-            h, w = image.shape[1], image.shape[2]
-            i = random.randint(0, h - self.crop[0])
-            j = random.randint(0, w - self.crop[1])
-            sample['image'] = image[:, i:i + self.crop[0], j:j + self.crop[1]]
-            sample['label'] = mask[i:i + self.crop[0], j:j + self.crop[1]]
-        return sample
-
-
-class transform_tr(object):
-    def __init__(self, args, mean, std):
-        self.composed_transforms = transforms.Compose([
-            FixedResize(resize=args.resize),
-            RandomCrop(crop_size=args.crop_size),
-            # tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size, fill=255),
-            # tr.RandomGaussianBlur(),
-            Normalize(mean, std),
-            ToTensor()])
-
-    def __call__(self, sample):
-        return self.composed_transforms(sample)
-
-
-class transform_val(object):
-    def __init__(self, args, mean, std):
-        self.composed_transforms = transforms.Compose([
-            FixedResize(resize=args.resize),
-            FixScaleCrop(crop_size=args.crop_size),  # TODO:CHECK THIS
-            Normalize(mean, std),
-            ToTensor()])
-
-    def __call__(self, sample):
-        return self.composed_transforms(sample)
-
-
-class transform_val(object):
-    def __init__(self, args, mean, std):
-        self.composed_transforms = transforms.Compose([
-            FixedResize(resize=args.crop_size),
-            Normalize(mean, std),
-            ToTensor()])
-
-    def __call__(self, sample):
-        return self.composed_transforms(sample)
-
-
-class transform_ts(object):
-    def __init__(self, args, mean, std):
-        self.composed_transforms = transforms.Compose([
-            FixedResize(resize=args.crop_size),
-            Normalize(mean, std),
-            ToTensor()])
-
-    def __call__(self, sample):
-        return self.composed_transforms(sample)
-
-
-class transform_retr(object):
-    def __init__(self, args, mean, std):
-        crop_size = (args.crop_size, args.crop_size) if isinstance(args.crop_size, int) else args.crop_size
-        self.composed_transforms = Retrain_Preprocess(0.5, (0.5, 2), crop_size, mean, std)
-
-    def __call__(self, sample):
-        return self.composed_transforms(sample)
-
-
-class transform_reval(object):  # we use multi_scale evaluate in evaluate.py so dont need resize in dataset
-    def __init__(self, args, mean, std):
-        self.composed_transforms = Retrain_Preprocess(None, None, None, mean, std)
-
-    def __call__(self, sample):
-        return self.composed_transforms(sample)

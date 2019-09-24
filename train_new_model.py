@@ -13,7 +13,7 @@ from utils.lr_scheduler import LR_Scheduler
 from utils.saver import Saver
 from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
-from retrain_model.new_model import newModel
+from new_model import newModel
 
 class trainNew(object):
     def __init__(self, args):
