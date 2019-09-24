@@ -83,6 +83,7 @@ class newModel(nn.Module):
     def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion=None, filter_multiplier=20,
                  block_multiplier=5, step=5, cell=Cell, BatchNorm=NaiveBN, args=None):
         super(newModel, self).__init__()
+        self.args = args
         self.cells = nn.ModuleList()
         self.network_arch = torch.from_numpy(network_arch)
         self.cell_arch = torch.from_numpy(cell_arch)
@@ -157,7 +158,6 @@ class newModel(nn.Module):
                 two_last_inputs[0], two_last_inputs[1])
             if i == 2:
                 low_level_feature = two_last_inputs[1]
-            print(two_last_inputs[-1].shape)
         last_output = two_last_inputs[-1]
         # else:
         return last_output, low_level_feature
@@ -206,6 +206,7 @@ def get_arch():
     return network_arch, cell_arch
 
 
-def get_default_net(filter_multiplier=8):
+def get_default_net(args=None):
+    filter_multiplier = args.filter_multiplier
     net_arch, cell_arch = get_arch()
-    return newModel(net_arch, cell_arch, 19, 12, filter_multiplier=filter_multiplier)
+    return newModel(net_arch, cell_arch, 19, 12, filter_multiplier=filter_multiplier, args=args)

@@ -72,7 +72,6 @@ def obtain_retrain_deeplab_v3plus_args():
                         help='evaluuation interval (default: 1)')
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
-
     parser.add_argument('--use-ABN', default=True, type=bool, help='whether use ABN')
     parser.add_argument('--affine', default=False, type=bool, help='whether use affine in BN')
 

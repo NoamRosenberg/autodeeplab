@@ -9,13 +9,13 @@ from operations import NaiveBN
 
 
 class Decoder(nn.Module):
-    def __init__(self, num_classes, BatchNorm=NaiveBN):
+    def __init__(self, num_classes, filter_multiplier, BatchNorm=NaiveBN):
         super(Decoder, self).__init__()
-        low_level_inplanes = 40
+        low_level_inplanes = filter_multiplier
 
         self.conv1 = nn.Conv2d(low_level_inplanes, 48, 1, bias=False)
         self.bn1 = BatchNorm(48)
-        self.last_conv = nn.Sequential(nn.Conv2d(304, 256, kernel_size=3, stride=1, padding=1, bias=False),
+        self.last_conv = nn.Sequential(nn.Conv2d(248, 256, kernel_size=3, stride=1, padding=1, bias=False),
                                        BatchNorm(256),
                                        nn.Dropout(0.5),
                                        nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
@@ -31,7 +31,6 @@ class Decoder(nn.Module):
         x = F.interpolate(x, size=low_level_feat.size()[2:], mode='bilinear', align_corners=True)
         x = torch.cat((x, low_level_feat), dim=1)
         x = self.last_conv(x)
-
         return x
 
     def _init_weight(self):

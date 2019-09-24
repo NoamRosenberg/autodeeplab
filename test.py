@@ -3,7 +3,10 @@ import torch.nn as nn
 from auto_deeplab import AutoDeeplab
 import warnings
 from config_utils.search_args import obtain_search_args
+from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
+
 warnings.filterwarnings('ignore')
+from retrain_model.build_autodeeplab import Train_Autodeeplab
 
 
 def total_params(model, log=True):
@@ -21,10 +24,7 @@ def each_param(model):
 if __name__ == "__main__":
     import torch
 
-    args = obtain_search_args()
-    criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
-    model = AutoDeeplab(num_classes=19, num_layers=12, criterion=criterion, filter_multiplier=args.filter_multiplier,
-                        block_multiplier=args.block_multiplier, step=args.step, args=args).cuda()
-    input = torch.randn(2, 3, 65, 65).cuda()
-    output = model(input)
-    print(output)
+    args = obtain_retrain_autodeeplab_args()
+    model = Train_Autodeeplab(19, args).cuda()
+    x = torch.randn(2, 3, 64, 64).cuda()
+    print(model(x).shape)

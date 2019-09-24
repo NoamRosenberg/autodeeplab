@@ -72,6 +72,9 @@ def obtain_retrain_autodeeplab_args():
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
 
+    parser.add_argument('--filter_multiplier', type=int, default=20)
+    parser.add_argument('--block_multiplier', type=int, default=5)
+
     parser.add_argument('--use-ABN', default=True, type=bool, help='whether use ABN')
     parser.add_argument('--affine', default=False, type=bool, help='whether use affine in BN')
 
