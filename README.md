@@ -15,7 +15,7 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 
 <br/><br/>
 
-From the auto-deeplab paper |  Our half-sized model takes twice as long to train
+From the auto-deeplab paper |  Our full-sized model takes twice as long to train
 :---------------------------------------:|:-------------------------:
 ![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours2.png)
 
