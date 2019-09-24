@@ -32,7 +32,9 @@ class CityscapesSegmentation(data.Dataset):
         self.split = split
         self.args = args
         self.files = {}
-
+        self.mean = (0.485, 0.456, 0.406)
+        self.std = (0.229, 0.224, 0.225)
+        self.crop = self.args.crop_size
         if split.startswith('re'):
             self.images_base = os.path.join(self.root, 'leftImg8bit', self.split[2:])
             self.annotations_base = os.path.join(self.root, 'gtFine', self.split[2:])
@@ -59,6 +61,7 @@ class CityscapesSegmentation(data.Dataset):
             raise Exception("No files for split=[%s] found in %s" % (split, self.images_base))
 
         print("Found %d %s images" % (len(self.files[split]), split))
+        self.transform = self.get_transform()
 
     def __len__(self):
         return len(self.files[self.split])
@@ -76,15 +79,7 @@ class CityscapesSegmentation(data.Dataset):
         _target = Image.fromarray(_tmp)
 
         sample = {'image': _img, 'label': _target}
-
-        if self.split == 'train':
-            return self.transform_tr(sample)
-        elif self.split == 'val':
-            return self.transform_val(sample)
-        elif self.split == 'test':
-            return self.transform_ts(sample)
-        elif self.split == 'retrain':
-            return self.transform_retrain(sample)
+        return self.transform(sample)
 
     def encode_segmap(self, mask):
         # Put all void classes to zero
@@ -103,45 +98,17 @@ class CityscapesSegmentation(data.Dataset):
                 for looproot, _, filenames in os.walk(rootdir)
                 for filename in filenames if filename.endswith(suffix)]
 
-    def transform_tr(self, sample):
-        composed_transforms = transforms.Compose([
-            tr.FixedResize(resize=self.args.resize),
-            tr.RandomCrop(crop_size=self.args.crop_size),
-            # tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size, fill=255),
-            # tr.RandomGaussianBlur(),
-            tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            tr.ToTensor()])
-
-        return composed_transforms(sample)
-
-    def transform_val(self, sample):
-
-        composed_transforms = transforms.Compose([
-            tr.FixedResize(resize=self.args.resize),
-            tr.FixScaleCrop(crop_size=self.args.crop_size),  # TODO:CHECK THIS
-            tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            tr.ToTensor()])
-
-        return composed_transforms(sample)
-
-    def transform_ts(self, sample):
-
-        composed_transforms = transforms.Compose([
-            tr.FixedResize(size=self.args.crop_size),
-            tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            tr.ToTensor()])
-
-        return composed_transforms(sample)
-
-    def transform_retrain(self, sample):
-        composed_transforms = transforms.Compose([
-            tr.RandomHorizontalFlip(),
-            tr.FixedResize(resize=self.args.resize),
-            tr.FixScaleCrop(crop_size=self.args.crop_size),
-            tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            tr.ToTensor()
-        ])
-        return composed_transforms(sample)
+    def get_transform(self):
+        if self.split == 'train':
+            return tr.transform_tr(self.args, self.mean, self.std)
+        elif self.split == 'val':
+            return tr.transform_val(self.args, self.mean, self.std)
+        elif self.split == 'test':
+            return tr.transform_ts(self.args, self.mean, self.std)
+        elif self.split == 'retrain':
+            return tr.transform_retr(self.args, self.mean, self.std)
+        elif self.split == 'reval':
+            return tr.transform_reval(self.args, self.mean, self.std)
 
 
 if __name__ == '__main__':
