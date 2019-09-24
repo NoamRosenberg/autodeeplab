@@ -42,7 +42,7 @@ class Block(nn.Module):
             self.skip = nn.Conv2d(inplanes, planes, 1,
                                   stride=stride, bias=False)
             self.skipbn = BatchNorm(planes)
-        elif skip != None:
+        elif skip is not None:
             if skip == 'conv':
                 self.skip = nn.Conv2d(inplanes, planes, 1,
                                       stride=stride, bias=False)
@@ -144,7 +144,8 @@ class AlignedXception(nn.Module):
             self.block2_0 = Block(128, 256, reps=2, stride=2,
                                   BatchNorm=BatchNorm, start_with_relu=False, grow_first=True)
             self.block2_1 = Block(256, 256, reps=2, stride=1,
-                                  BatchNorm=BatchNorm, start_with_relu=False, is_last=True, grow_first=True, skip='conv')
+                                  BatchNorm=BatchNorm, start_with_relu=False, is_last=True, grow_first=True,
+                                  skip='conv')
             self.block2 = nn.Sequential(self.block2_0, self.block2_1)
         elif mode == 'xception_65':
             self.block2 = Block(128, 256, reps=2, stride=2, BatchNorm=BatchNorm, start_with_relu=False,
@@ -162,8 +163,8 @@ class AlignedXception(nn.Module):
             self.block3 = Block(256, 728, reps=2, stride=entry_block3_stride, BatchNorm=BatchNorm,
                                 start_with_relu=True, grow_first=True, is_last=True)
 
-        self.entry_flow = nn.Sequential(
-            self.conv1, self.bn1, self.relu, self.conv2, self.bn2, self.block1, self.block2, self.block3)
+        self.entry_flow = nn.Sequential(self.conv1, self.bn1, self.relu, self.conv2, self.bn2, self.block1, self.block2,
+                                        self.block3)
 
         # Middle flow
         self.block4 = Block(728, 728, reps=3, stride=1, dilation=middle_block_dilation,
@@ -230,7 +231,6 @@ class AlignedXception(nn.Module):
 
         x = self.block0_0(x)
         x = self.block0_1(x)
-
 
         x = self.block1(x)
         # add relu here
@@ -323,6 +323,7 @@ class AlignedXception(nn.Module):
 
 if __name__ == "__main__":
     import torch
+
     model = AlignedXception(BatchNorm=nn.BatchNorm2d,
                             pretrained=True, output_stride=16)
     input = torch.rand(1, 3, 512, 512)

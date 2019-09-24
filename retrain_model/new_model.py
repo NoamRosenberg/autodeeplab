@@ -11,15 +11,11 @@ from modeling.decoder import *
 from modeling.aspp import ASPP_train
 
 
-
-
 class Cell(nn.Module):
 
     def __init__(self, steps, block_multiplier, prev_prev_fmultiplier,
-                 prev_filter_multiplier,
-                 cell_arch, network_arch,
-                 filter_multiplier, downup_sample):
-
+                 prev_filter_multiplier, cell_arch, network_arch,
+                 filter_multiplier, downup_sample, args=None):
         super(Cell, self).__init__()
         self.cell_arch = cell_arch
 
@@ -28,10 +24,8 @@ class Cell(nn.Module):
         self.C_prev = int(block_multiplier * prev_filter_multiplier)
         self.C_prev_prev = int(block_multiplier * prev_prev_fmultiplier)
         self.downup_sample = downup_sample
-        self.pre_preprocess = ReLUConvBN(
-            self.C_prev_prev, self.C_out, 1, 1, 0, affine=True)
-        self.preprocess = ReLUConvBN(
-            self.C_prev, self.C_out, 1, 1, 0, affine=True)
+        self.pre_preprocess = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, args.affine, args.use_ABN)
+        self.preprocess = ReLUConvBN(self.C_prev, self.C_out, 1, 1, 0, args.affine, args.use_ABN)
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
@@ -41,9 +35,8 @@ class Cell(nn.Module):
             self.scale = 2
         for x in self.cell_arch:
             primitive = PRIMITIVES[x[1]]
-            op = OPS[primitive](self.C_out, stride=1, affine=True)
+            op = OPS[primitive](self.C_out, stride=1, affine=args.affine, use_ABN=args.use_ABN)
             self._ops.append(op)
-
 
     def scale_dimension(self, dim, scale):
         return (int((float(dim) - 1.0) * scale + 1.0) if dim % 2 == 1 else int((float(dim) * scale)))
@@ -51,17 +44,14 @@ class Cell(nn.Module):
     def forward(self, prev_prev_input, prev_input):
 
         if self.downup_sample != 0:
-            feature_size_h = self.scale_dimension(
-                prev_input.shape[2], self.scale)
-            feature_size_w = self.scale_dimension(
-                prev_input.shape[3], self.scale)
-            prev_input = F.interpolate(
-                prev_input, [feature_size_h, feature_size_w], mode='bilinear')
+            feature_size_h = self.scale_dimension(prev_input.shape[2], self.scale)
+            feature_size_w = self.scale_dimension(prev_input.shape[3], self.scale)
+            prev_input = F.interpolate(prev_input, [feature_size_h, feature_size_w], mode='bilinear')
+        if (prev_prev_input.shape[2] != prev_input.shape[2]) or (prev_prev_input.shape[3] != prev_input.shape[3]):
+            prev_prev_input = F.interpolate(prev_prev_input, (prev_input.shape[2], prev_input.shape[3]),
+                                            mode='bilinear')
 
-        prev_prev_input = F.interpolate(prev_prev_input, (prev_input.shape[2], prev_input.shape[3]), mode='bilinear') if (
-            prev_prev_input.shape[2] != prev_input.shape[2]) or (prev_prev_input.shape[3] != prev_input.shape[3]) else prev_prev_input
-        s0 = self.pre_preprocess(prev_prev_input) if (
-            prev_prev_input.shape[1] != self.C_out) else prev_prev_input
+        s0 = self.pre_preprocess(prev_prev_input) if (prev_prev_input.shape[1] != self.C_out) else prev_prev_input
         s1 = self.preprocess(prev_input)
 
         states = [s0, s1]
@@ -89,10 +79,10 @@ class Cell(nn.Module):
         return prev_input, concat_feature
 
 
-class newModel (nn.Module):
-    def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion=None, filter_multiplier=20, block_multiplier=5, step=5, cell=Cell, full_net='deeplab_v3+'):
+class newModel(nn.Module):
+    def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion=None, filter_multiplier=20,
+                 block_multiplier=5, step=5, cell=Cell, BatchNorm=NaiveBN, args=None):
         super(newModel, self).__init__()
-
         self.cells = nn.ModuleList()
         self.network_arch = torch.from_numpy(network_arch)
         self.cell_arch = torch.from_numpy(cell_arch)
@@ -102,32 +92,28 @@ class newModel (nn.Module):
         self._block_multiplier = block_multiplier
         self._filter_multiplier = filter_multiplier
         self._criterion = criterion
-        self._full_net = full_net
+        self.use_ABN = args.use_ABN
         initial_fm = 128
         self.stem0 = nn.Sequential(
             nn.Conv2d(3, 64, 3, stride=2, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU()
+            BatchNorm(64)
         )
         self.stem1 = nn.Sequential(
             nn.Conv2d(64, 64, 3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU()
+            BatchNorm(64)
         )
         # TODO: first two channels should be set automatically
         ini_initial_fm = 64
         self.stem2 = nn.Sequential(
             nn.Conv2d(64, initial_fm, 3, stride=2, padding=1),
-            nn.BatchNorm2d(initial_fm),
-            nn.ReLU()
+            BatchNorm(initial_fm)
         )
-        #C_prev_prev = 64
+        # C_prev_prev = 64
         filter_param_dict = {0: 1, 1: 2, 2: 4, 3: 8}
         for i in range(self._num_layers):
             level_option = torch.sum(self.network_arch[i], dim=1)
-            prev_level_option = torch.sum(self.network_arch[i-1], dim=1)
-            prev_prev_level_option = torch.sum(
-                self.network_arch[i-2], dim=1)
+            prev_level_option = torch.sum(self.network_arch[i - 1], dim=1)
+            prev_prev_level_option = torch.sum(self.network_arch[i - 2], dim=1)
             level = torch.argmax(level_option).item()
             prev_level = torch.argmax(prev_level_option).item()
             prev_prev_level = torch.argmax(prev_prev_level_option).item()
@@ -138,7 +124,7 @@ class newModel (nn.Module):
                              self.cell_arch, self.network_arch[i],
                              self._filter_multiplier *
                              filter_param_dict[level],
-                             downup_sample)
+                             downup_sample, self.args)
             else:
                 three_branch_options = torch.sum(self.network_arch[i], dim=0)
                 downup_sample = torch.argmax(three_branch_options).item() - 1
@@ -149,24 +135,17 @@ class newModel (nn.Module):
                                  self.cell_arch, self.network_arch[i],
                                  self._filter_multiplier *
                                  filter_param_dict[level],
-                                 downup_sample)
+                                 downup_sample, self.args)
                 else:
-                    _cell = cell(self._step, self._block_multiplier, self._filter_multiplier * filter_param_dict[prev_prev_level],
+                    _cell = cell(self._step, self._block_multiplier,
+                                 self._filter_multiplier * filter_param_dict[prev_prev_level],
                                  self._filter_multiplier *
                                  filter_param_dict[prev_level],
                                  self.cell_arch, self.network_arch[i],
                                  self._filter_multiplier *
-                                 filter_param_dict[level], downup_sample)
+                                 filter_param_dict[level], downup_sample, self.args)
 
             self.cells += [_cell]
-
-        if self._full_net is None:
-            last_level_option = torch.sum(self.network_arch[-1], dim=1)
-            last_level = torch.argmax(last_level_option).item()
-            aspp_num_input_channels = self._block_multiplier * \
-                self._filter_multiplier * filter_param_dict[last_level]
-            atrous_rate = int(96 / (filter_param_dict[last_level] * 4))
-            self.aspp = ASPP_train('autodeeplab', 8)  # 96 / 4 as in the paper
 
     def forward(self, x):
         stem = self.stem0(x)
@@ -180,9 +159,6 @@ class newModel (nn.Module):
                 low_level_feature = two_last_inputs[1]
             print(two_last_inputs[-1].shape)
         last_output = two_last_inputs[-1]
-        if self._full_net is None:
-            aspp_result = self.aspp(last_output)
-            return aspp_result
         # else:
         return last_output, low_level_feature
 
@@ -223,7 +199,6 @@ def get_cell():
 
 
 def get_arch():
-
     backbone = [0, 0, 0, 1, 2, 1, 2, 2, 3, 3, 2, 1]
     network_arch = network_layer_to_space(backbone)
     cell_arch = get_cell()
@@ -234,4 +209,3 @@ def get_arch():
 def get_default_net(filter_multiplier=8):
     net_arch, cell_arch = get_arch()
     return newModel(net_arch, cell_arch, 19, 12, filter_multiplier=filter_multiplier)
- 
