@@ -15,12 +15,11 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 
 <br/><br/>
 
-From the auto-deeplab paper |  Our model
+From the auto-deeplab paper |  Ours
 :---------------------------------------:|:-------------------------:
 ![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours2.png)
 
-***For half-sized model, set --filter_multiplier 4 --resize 358 --crop_size 224***
-<br/><br/>
+
 ***For full-sized model, leave parameters to their default setting***
 <br/><br/>
 ## Training Proceedure
