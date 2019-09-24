@@ -14,10 +14,8 @@ from modeling.aspp import ASPP_train
 class Cell(nn.Module):
 
     def __init__(self, steps, block_multiplier, prev_prev_fmultiplier,
-                 prev_filter_multiplier,
-                 cell_arch, network_arch,
-                 filter_multiplier, downup_sample):
-
+                 prev_filter_multiplier, cell_arch, network_arch,
+                 filter_multiplier, downup_sample, args=None):
         super(Cell, self).__init__()
         self.cell_arch = cell_arch
 
@@ -26,10 +24,8 @@ class Cell(nn.Module):
         self.C_prev = int(block_multiplier * prev_filter_multiplier)
         self.C_prev_prev = int(block_multiplier * prev_prev_fmultiplier)
         self.downup_sample = downup_sample
-        self.pre_preprocess = ReLUConvBN(
-            self.C_prev_prev, self.C_out, 1, 1, 0, affine=True)
-        self.preprocess = ReLUConvBN(
-            self.C_prev, self.C_out, 1, 1, 0, affine=True)
+        self.pre_preprocess = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, args.affine, args.use_ABN)
+        self.preprocess = ReLUConvBN(self.C_prev, self.C_out, 1, 1, 0, args.affine, args.use_ABN)
         self._steps = steps
         self.block_multiplier = block_multiplier
         self._ops = nn.ModuleList()
@@ -39,7 +35,7 @@ class Cell(nn.Module):
             self.scale = 2
         for x in self.cell_arch:
             primitive = PRIMITIVES[x[1]]
-            op = OPS[primitive](self.C_out, stride=1, affine=True)
+            op = OPS[primitive](self.C_out, stride=1, affine=args.affine, use_ABN=args.use_ABN)
             self._ops.append(op)
 
     def scale_dimension(self, dim, scale):
@@ -48,20 +44,14 @@ class Cell(nn.Module):
     def forward(self, prev_prev_input, prev_input):
 
         if self.downup_sample != 0:
-            feature_size_h = self.scale_dimension(
-                prev_input.shape[2], self.scale)
-            feature_size_w = self.scale_dimension(
-                prev_input.shape[3], self.scale)
-            prev_input = F.interpolate(
-                prev_input, [feature_size_h, feature_size_w], mode='bilinear')
+            feature_size_h = self.scale_dimension(prev_input.shape[2], self.scale)
+            feature_size_w = self.scale_dimension(prev_input.shape[3], self.scale)
+            prev_input = F.interpolate(prev_input, [feature_size_h, feature_size_w], mode='bilinear')
+        if (prev_prev_input.shape[2] != prev_input.shape[2]) or (prev_prev_input.shape[3] != prev_input.shape[3]):
+            prev_prev_input = F.interpolate(prev_prev_input, (prev_input.shape[2], prev_input.shape[3]),
+                                            mode='bilinear')
 
-        prev_prev_input = F.interpolate(prev_prev_input, (prev_input.shape[2], prev_input.shape[3]),
-                                        mode='bilinear') if (
-                                                                    prev_prev_input.shape[2] != prev_input.shape[
-                                                                2]) or (prev_prev_input.shape[3] != prev_input.shape[
-            3]) else prev_prev_input
-        s0 = self.pre_preprocess(prev_prev_input) if (
-                prev_prev_input.shape[1] != self.C_out) else prev_prev_input
+        s0 = self.pre_preprocess(prev_prev_input) if (prev_prev_input.shape[1] != self.C_out) else prev_prev_input
         s1 = self.preprocess(prev_input)
 
         states = [s0, s1]
@@ -91,9 +81,8 @@ class Cell(nn.Module):
 
 class newModel(nn.Module):
     def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion=None, filter_multiplier=20,
-                 block_multiplier=5, step=5, cell=Cell, BatchNorm=ABN):
+                 block_multiplier=5, step=5, cell=Cell, BatchNorm=NaiveBN, args=None):
         super(newModel, self).__init__()
-
         self.cells = nn.ModuleList()
         self.network_arch = torch.from_numpy(network_arch)
         self.cell_arch = torch.from_numpy(cell_arch)
@@ -103,20 +92,21 @@ class newModel(nn.Module):
         self._block_multiplier = block_multiplier
         self._filter_multiplier = filter_multiplier
         self._criterion = criterion
+        self.use_ABN = args.use_ABN
         initial_fm = 128
         self.stem0 = nn.Sequential(
             nn.Conv2d(3, 64, 3, stride=2, padding=1),
-            ABN(64)
+            BatchNorm(64)
         )
         self.stem1 = nn.Sequential(
             nn.Conv2d(64, 64, 3, padding=1),
-            ABN(64)
+            BatchNorm(64)
         )
         # TODO: first two channels should be set automatically
         ini_initial_fm = 64
         self.stem2 = nn.Sequential(
             nn.Conv2d(64, initial_fm, 3, stride=2, padding=1),
-            ABN(initial_fm)
+            BatchNorm(initial_fm)
         )
         # C_prev_prev = 64
         filter_param_dict = {0: 1, 1: 2, 2: 4, 3: 8}
@@ -134,7 +124,7 @@ class newModel(nn.Module):
                              self.cell_arch, self.network_arch[i],
                              self._filter_multiplier *
                              filter_param_dict[level],
-                             downup_sample)
+                             downup_sample, self.args)
             else:
                 three_branch_options = torch.sum(self.network_arch[i], dim=0)
                 downup_sample = torch.argmax(three_branch_options).item() - 1
@@ -145,7 +135,7 @@ class newModel(nn.Module):
                                  self.cell_arch, self.network_arch[i],
                                  self._filter_multiplier *
                                  filter_param_dict[level],
-                                 downup_sample)
+                                 downup_sample, self.args)
                 else:
                     _cell = cell(self._step, self._block_multiplier,
                                  self._filter_multiplier * filter_param_dict[prev_prev_level],
@@ -153,7 +143,7 @@ class newModel(nn.Module):
                                  filter_param_dict[prev_level],
                                  self.cell_arch, self.network_arch[i],
                                  self._filter_multiplier *
-                                 filter_param_dict[level], downup_sample)
+                                 filter_param_dict[level], downup_sample, self.args)
 
             self.cells += [_cell]
 

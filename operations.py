@@ -35,7 +35,7 @@ OPS = {
 
 
 class NaiveBN(nn.Module):
-    def __init__(self, C_out, affine=True):
+    def __init__(self, C_out, momentum=0.1, affine=True):
         super(NaiveBN, self).__init__()
         self.op = nn.Sequential(
             nn.BatchNorm2d(C_out, affine=affine),
