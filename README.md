@@ -14,8 +14,7 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 ![model results](./images/results.png)
 
 <br/><br/>
-***ARCHITECTURE SEARCH PERFORMANCE***
-<br/><br/>
+#ARCHITECTURE SEARCH PERFORMANCE
 
 From the auto-deeplab paper |  Ours
 :---------------------------------------:|:-------------------------:
