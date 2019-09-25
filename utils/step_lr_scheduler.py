@@ -11,7 +11,7 @@
 import math
 
 
-class LR_Scheduler(object):
+class Iter_LR_Scheduler(object):
     """Learning Rate Scheduler
 
     Step mode: ``lr = baselr * 0.1 ^ {floor(epoch-1 / lr_step)}``
@@ -29,48 +29,34 @@ class LR_Scheduler(object):
         iters_per_epoch: number of iterations per epoch
     """
 
-    def __init__(self, mode, base_lr, num_epochs, iters_per_epoch=0,
-                 lr_step=0, warmup_epochs=0, min_lr=None):
+    def __init__(self, mode, base_lr, max_iteration, iters_per_epoch=0, warmup_iters=1000, min_lr=None, lr_step=0):
         self.mode = mode
         print('Using {} LR Scheduler!'.format(self.mode))
         self.lr = base_lr
-        if mode == 'step':
-            assert lr_step
         self.lr_step = lr_step
         self.iters_per_epoch = iters_per_epoch
-        self.N = num_epochs * iters_per_epoch
+        self.max_iteration = max_iteration
         self.epoch = -1
-        self.warmup_iters = warmup_epochs * iters_per_epoch
-        self.min_lr = min_lr
+        self.warmup_iters = warmup_iters
+        self.min_lr = min_lr if min_lr is not None else 0
 
-    def __call__(self, optimizer, i, epoch, best_pred):
-        T = epoch * self.iters_per_epoch + i
+    def __call__(self, optimizer, iteration):
         if self.mode == 'cos':
-            lr = 0.5 * self.lr * (1 + math.cos(1.0 * T / self.N * math.pi))
+            lr = 0.5 * self.lr * (1 + math.cos(1.0 * iteration / self.max_iteration * math.pi))
         elif self.mode == 'poly':
-            lr = self.lr * pow((1 - 1.0 * T / self.N), 0.9)
+            lr = self.lr * pow((1 - (iteration - self.warmup_iters) / (self.max_iteration - self.warmup_iters)), 0.9)
         elif self.mode == 'step':
+            if not self.lr_step:
+                raise NotImplementedError
+            epoch = iteration // self.iters_per_epoch
             lr = self.lr * (0.1 ** (epoch // self.lr_step))
         else:
             raise NotImplemented
         # warm up lr schedule
-        if self.min_lr is not None:
-            if lr < self.min_lr:
-                lr = self.min_lr
-        if self.warmup_iters > 0 and T < self.warmup_iters:
-            lr = lr * 1.0 * T / self.warmup_iters
-        if epoch > self.epoch:
-            print('\n=>Epoches %i, learning rate = %.4f, \
-                previous best = %.4f' % (epoch, lr, best_pred))
+        if self.warmup_iters > 0 and iteration < self.warmup_iters:
+            lr = lr * 1.0 * iteration / self.warmup_iters
+        if (not iteration % self.iters_per_epoch) and (iteration // self.iters_per_epoch > self.epoch):
+            epoch = iteration // self.iters_per_epoch
+            print('\n=>Epoches %i, learning rate = %.4f' % (epoch, lr))
             self.epoch = epoch
-        assert lr >= 0
-        self._adjust_learning_rate(optimizer, lr)
-
-    def _adjust_learning_rate(self, optimizer, lr):
-        if len(optimizer.param_groups) == 1:
-            optimizer.param_groups[0]['lr'] = lr
-        else:
-            # enlarge the lr at the head
-            optimizer.param_groups[0]['lr'] = lr
-            for i in range(1, len(optimizer.param_groups)):
-                optimizer.param_groups[i]['lr'] = lr * 10
+        optimizer.param_groups[0]['lr'] = max(lr, self.min_lr)
