@@ -25,9 +25,9 @@ class SBDSegmentation(data.Dataset):
         """
         super().__init__()
         self._base_dir = base_dir
-        self._dataset_dir = os.path.join(self._base_dir, 'dataset')
-        self._image_dir = os.path.join(self._dataset_dir, 'img')
-        self._cat_dir = os.path.join(self._dataset_dir, 'cls')
+        self._dataset_dir = os.path.join(self._base_dir, 'ImageSets', 'Segmentation')
+        self._image_dir = os.path.join(self._base_dir, 'JPEGImages')
+        self._cat_dir = os.path.join(self._base_dir, 'SegmentationClassAug')
 
 
         if isinstance(split, str):
@@ -45,10 +45,12 @@ class SBDSegmentation(data.Dataset):
         for splt in self.split:
             with open(os.path.join(self._dataset_dir, splt + '.txt'), "r") as f:
                 lines = f.read().splitlines()
-
+#            print(os.path.join(self._dataset_dir, splt + '.txt'), "r")
             for line in lines:
+ #               print(line)
                 _image = os.path.join(self._image_dir, line + ".jpg")
-                _categ= os.path.join(self._cat_dir, line + ".mat")
+                _categ = os.path.join(self._cat_dir, line + ".png")
+#                print(_image)
                 assert os.path.isfile(_image)
                 assert os.path.isfile(_categ)
                 self.im_ids.append(line)
@@ -72,20 +74,20 @@ class SBDSegmentation(data.Dataset):
 
     def _make_img_gt_point_pair(self, index):
         _img = Image.open(self.images[index]).convert('RGB')
-        _target = Image.fromarray(scipy.io.loadmat(self.categories[index])["GTcls"][0]['Segmentation'][0])
+        _target = Image.open(self.categories[index]) 
+        #TODO: Haven't figured out how to convey to .mat for fast loading
+        #= Image.fromarray(scipy.io.loadmat(self.categories[index])["GTcls"][0]['Segmentation'][0])
 
         return _img, _target
 
     def transform(self, sample):
         composed_transforms = transforms.Compose([
-            tr.RandomHorizontalFlip(),
-            tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size),
-            tr.RandomGaussianBlur(),
+            tr.FixedResize(resize=self.args.resize),
+            tr.FixScaleCrop(crop_size=self.args.crop_size), #TODO:CHECK THIS
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
 
         return composed_transforms(sample)
-
 
     def __str__(self):
         return 'SBDSegmentation(split=' + str(self.split) + ')'

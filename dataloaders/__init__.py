@@ -7,7 +7,7 @@ def make_data_loader(args, **kwargs):
         train_set = pascal.VOCSegmentation(args, split='train')
         val_set = pascal.VOCSegmentation(args, split='val')
         if args.use_sbd:
-            sbd_train = sbd.SBDSegmentation(args, split=['train', 'val'])
+            sbd_train = sbd.SBDSegmentation(args, split='trainaug')
             train_set = combine_dbs.CombineDBs([train_set, sbd_train], excluded=[val_set])
 
         num_class = train_set.NUM_CLASSES
@@ -15,7 +15,7 @@ def make_data_loader(args, **kwargs):
         val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, **kwargs)
         test_loader = None
 
-        return train_loader, train_loader, val_loader, test_loader, num_class
+        return train_loader, val_loader, test_loader, num_class
 
     elif args.dataset == 'cityscapes':
         if args.autodeeplab == 'search':
