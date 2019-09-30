@@ -131,7 +131,7 @@ class Trainer(object):
             loss.backward()
             self.optimizer.step()
             train_loss += loss.item()
-            if dist.get_rank() == 0 and iteration // 200 == 0:
+            if dist.get_rank() == 0 and iteration % 10000 == 0:
                 self.writer.add_scalar('train/total_loss_iter', loss.item(), iteration)
                 print('Train loss: %.3f \n' % (train_loss / (iteration + 1)))
 
@@ -144,7 +144,7 @@ class Trainer(object):
             print('[Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
             print('Loss: %.3f' % train_loss)
 
-        if (iteration < 490000 and iteration % 2000 == 0) or (iteration >= 490000 and iteration % 100):
+        if (iteration < 490000 and iteration % 10000 == 0) or (iteration >= 490000 and iteration % 100):
             # save checkpoint every epoch
             is_best = False
             self.saver.save_checkpoint({
@@ -196,8 +196,6 @@ def main():
     print('Total Epoches:', trainer.args.epochs)
     for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
         trainer.training(epoch)
-        if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
-            trainer.validation(epoch)
 
     trainer.writer.close()
 
