@@ -1,4 +1,5 @@
-import  argparse
+import argparse
+
 
 def obtain_retrain_autodeeplab_args():
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
@@ -77,6 +78,7 @@ def obtain_retrain_autodeeplab_args():
 
     parser.add_argument('--use-ABN', default=True, type=bool, help='whether use ABN')
     parser.add_argument('--affine', default=False, type=bool, help='whether use affine in BN')
-
+    parser.add_argument('--port', default=6000, type=int)
+    parser.add_argument('--max-iteration', default=1000000, type=bool)
     args = parser.parse_args()
     return args
