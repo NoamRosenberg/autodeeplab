@@ -157,7 +157,6 @@ class newModel(nn.Module):
             two_last_inputs = self.cells[i](two_last_inputs[0], two_last_inputs[1])
             if i == 2:
                 low_level_feature = two_last_inputs[1]
-            print(two_last_inputs[-1].shape)
         last_output = two_last_inputs[-1]
         # else:
         return last_output, low_level_feature

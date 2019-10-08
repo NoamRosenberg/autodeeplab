@@ -43,7 +43,7 @@ def main():
     if args.criterion == 'Ohem':
         args.thresh = 0.7
         args.crop_size = [args.crop_size, args.crop_size] if isinstance(args.crop_size, int) else args.crop_size
-        args.n_min = (args.batch_size / len(args.gpu)) * args.crop_size[0] * args.crop_size[1] // 16
+        args.n_min = int((args.batch_size / len(args.gpu) * args.crop_size[0] * args.crop_size[1]) // 16)
     criterion = build_criterion(args)
 
     model = nn.DataParallel(model).cuda()
@@ -73,13 +73,12 @@ def main():
             raise ValueError('=> no checkpoint found at {0}'.format(args.resume))
 
     for epoch in range(start_epoch, args.epochs):
-        print('reset local total loss!')
         losses = AverageMeter()
-        for i, (inputs, target) in enumerate(dataset_loader):
+        for i, sample in enumerate(dataset_loader):
             cur_iter = epoch * len(dataset_loader) + i
             scheduler(optimizer, cur_iter)
-            inputs = Variable(inputs.cuda())
-            target = Variable(target.cuda())
+            inputs = Variable(sample['image'].cuda())
+            target = Variable(sample['label'].cuda())
             outputs = model(inputs)
             loss = criterion(outputs, target)
             if np.isnan(loss.item()) or np.isinf(loss.item()):
@@ -106,6 +105,7 @@ def main():
                 'optimizer': optimizer.state_dict(),
             }, model_fname % (epoch + 1))
 
+        print('reset local total loss!')
 
 if __name__ == "__main__":
     main()

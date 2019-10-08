@@ -16,7 +16,7 @@ def make_data_loader(args, **kwargs):
                 train_loader2 = DataLoader(train_set2, batch_size=args.batch_size, shuffle=False, sampler=sampler2, **kwargs)
 
             elif args.autodeeplab == 'train':
-                train_set = cityscapes.CityscapesSegmentation(args, split='train')
+                train_set = cityscapes.CityscapesSegmentation(args, split='retrain')
                 num_class = train_set.NUM_CLASSES
                 sampler1 = torch.utils.data.distributed.DistributedSampler(train_set)
                 train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=False, sampler=sampler1, **kwargs)

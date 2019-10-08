@@ -83,15 +83,12 @@ def main():
     losses = AverageMeter()
 
     for epoch in range(start_epoch, args.epochs):
-        if dist.get_rank() == 0:
-            print('reset local total loss!')
         losses = AverageMeter()
-        # TODO: check the difference in dataloader
-        for i, (inputs, target) in enumerate(dataset_loader):
+        for i, sample in enumerate(dataset_loader):
             cur_iter = epoch * len(dataset_loader) + i
             scheduler(optimizer, cur_iter)
-            inputs = Variable(inputs.cuda())
-            target = Variable(target.cuda())
+            inputs = Variable(sample['image'].cuda())
+            target = Variable(sample['label'].cuda())
             outputs = model(inputs)
             loss = criterion(outputs, target)
             losses.update(loss.item(), args.batch_size)
@@ -117,6 +114,7 @@ def main():
                     'optimizer': optimizer.state_dict(),
                 }, model_fname % (epoch + 1))
 
+            print('reset local total loss!')
 
 if __name__ == "__main__":
     main()
