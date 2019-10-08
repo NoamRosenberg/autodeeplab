@@ -1,17 +1,24 @@
-from retrain_model.new_model import get_default_net
+import numpy as np
+import torch.nn as nn
+import torch.distributed as dist
+
+from operations import NaiveBN, ABN
 from retrain_model.aspp import ASPP
 from retrain_model.decoder import Decoder
-import torch.nn as nn
-from operations import NaiveBN, ABN
+from retrain_model.new_model import get_default_arch, newModel
 
 
 class Retrain_Autodeeplab(nn.Module):
     def __init__(self, args):
         super(Retrain_Autodeeplab, self).__init__()
         BatchNorm2d = ABN if args.use_ABN else NaiveBN
-        if args.use_ABN:
+        if (not args.dist and args.use_ABN) or (args.dist and args.use_ABN and dist.get_rank() == 0):
             print("=> use ABN!")
-        self.encoder = get_default_net(args=args)
+        if args.net_arch is not None and args.cell_arch is not None:
+            net_arch, cell_arch = np.load(args.net_arch), np.load(args.cell_arch)
+        else:
+            network_arch, cell_arch = get_default_arch()
+        self.encoder = newModel(network_arch, cell_arch, args.num_classes, 12, args.filter_multiplier, BatchNorm=BatchNorm2d, args=args)
         self.aspp = ASPP(args.filter_multiplier * 10, 256, args.num_classes, conv=nn.Conv2d, norm=BatchNorm2d)
         self.decoder = Decoder(args.num_classes, filter_multiplier=args.filter_multiplier * args.block_multiplier)
 

@@ -191,7 +191,7 @@ def network_layer_to_space(net_arch):
     return space
 
 
-def get_cell():
+def get_default_cell():
     cell = np.zeros((10, 2))
     cell[0] = [0, 7]
     cell[1] = [1, 4]
@@ -206,13 +206,13 @@ def get_cell():
     return cell.astype('uint8')
 
 
-def get_arch():
+def get_default_arch():
     backbone = [0, 0, 0, 1, 2, 1, 2, 2, 3, 3, 2, 1]
-    cell_arch = get_cell()
+    cell_arch = get_default_cell()
     return network_layer_to_space(backbone), cell_arch
 
 
 def get_default_net(args=None):
     filter_multiplier = args.filter_multiplier if args is not None else 20
-    path_arch, cell_arch = get_arch()
+    path_arch, cell_arch = get_default_arch()
     return newModel(path_arch, cell_arch, 19, 12, filter_multiplier=filter_multiplier, args=args)

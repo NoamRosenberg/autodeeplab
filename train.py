@@ -36,10 +36,6 @@ def main():
         raise ValueError('Unknown dataset: {}'.format(args.dataset))
 
     if args.backbone == 'autodeeplab':
-        if args.net_arch is not None and args.cell_arch is not None:
-            net_arch, cell_arch = np.load(args.net_arch), np.load(args.cell_arch)
-        else:
-            network_arch, cell_arch = new_model.get_arch()
         model = Retrain_Autodeeplab(args)
     else:
         raise ValueError('Unknown backbone: {}'.format(args.backbone))

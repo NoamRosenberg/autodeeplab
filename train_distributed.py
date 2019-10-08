@@ -15,7 +15,7 @@ import dataloaders
 from utils.utils import AverageMeter
 from utils.loss import build_criterion
 import retrain_model.new_model as new_model
-from utils.step_lr_scheduler import Iter_LR_Scheduler
+from utils.step_lr_scheduler_dist import Iter_LR_Scheduler
 from retrain_model.build_autodeeplab import Retrain_Autodeeplab
 from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
 
@@ -43,7 +43,7 @@ def main():
         if args.net_arch is not None and args.cell_arch is not None:
             net_arch, cell_arch = np.load(args.net_arch), np.load(args.cell_arch)
         else:
-            network_arch, cell_arch = new_model.get_arch()
+            network_arch, cell_arch = new_model.get_default_arch()
         model = Retrain_Autodeeplab(args)
     else:
         raise ValueError('Unknown backbone: {}'.format(args.backbone))
@@ -55,18 +55,20 @@ def main():
     criterion = build_criterion(args)
 
     optimizer = optim.SGD(model.module.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
-    if dist.get_rank() == 0:
-        if args.resume:
-            if os.path.isfile(args.resume):
+    if args.resume:
+        if os.path.isfile(args.resume):
+            if dist.get_rank() == 0:
                 print('=> loading checkpoint {0}'.format(args.resume))
-                checkpoint = torch.load(args.resume)
-                start_epoch = checkpoint['epoch']
-                model.load_state_dict(checkpoint['state_dict'])
-                optimizer.load_state_dict(checkpoint['optimizer'])
+            checkpoint = torch.load(args.resume)
+            start_epoch = checkpoint['epoch']
+            model.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            if dist.get_rank() == 0:
                 print('=> loaded checkpoint {0} (epoch {1})'.format(args.resume, checkpoint['epoch']))
-            else:
-                raise ValueError('=> no checkpoint found at {0}'.format(args.resume))
-
+        else:
+            raise ValueError('=> no checkpoint found at {0}'.format(args.resume))
+    else:
+        start_epoch = 0
     model = nn.parallel.DistributedDataParallel(model.train().cuda(), device_ids=[args.local_rank, ], output_device=args.local_rank)
 
     if args.freeze_bn:
@@ -79,7 +81,6 @@ def main():
     max_iteration = len(dataset_loader) * args.epochs
     scheduler = Iter_LR_Scheduler(args.mode, args.base_lr, max_iteration, len(dataset_loader))
     losses = AverageMeter()
-    start_epoch = 0
 
     for epoch in range(start_epoch, args.epochs):
         if dist.get_rank() == 0:
@@ -94,7 +95,6 @@ def main():
             outputs = model(inputs)
             loss = criterion(outputs, target)
             losses.update(loss.item(), args.batch_size)
-
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
