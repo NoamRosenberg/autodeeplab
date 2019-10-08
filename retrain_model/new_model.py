@@ -46,10 +46,10 @@ class Cell(nn.Module):
         if self.downup_sample != 0:
             feature_size_h = self.scale_dimension(prev_input.shape[2], self.scale)
             feature_size_w = self.scale_dimension(prev_input.shape[3], self.scale)
-            prev_input = F.interpolate(prev_input, [feature_size_h, feature_size_w], mode='bilinear')
+            prev_input = F.interpolate(prev_input, [feature_size_h, feature_size_w], mode='bilinear', align_corners=True)
         if (prev_prev_input.shape[2] != prev_input.shape[2]) or (prev_prev_input.shape[3] != prev_input.shape[3]):
             prev_prev_input = F.interpolate(prev_prev_input, (prev_input.shape[2], prev_input.shape[3]),
-                                            mode='bilinear')
+                                            mode='bilinear', align_corners=True)
 
         s0 = self.pre_preprocess(prev_prev_input) if (prev_prev_input.shape[1] != self.C_out) else prev_prev_input
         s1 = self.preprocess(prev_input)
@@ -80,33 +80,33 @@ class Cell(nn.Module):
 
 
 class newModel(nn.Module):
-    def __init__(self, network_arch, cell_arch, num_classes, num_layers, criterion=None, filter_multiplier=20,
-                 block_multiplier=5, step=5, cell=Cell, BatchNorm=NaiveBN, args=None):
+    def __init__(self, network_arch, cell_arch, num_classes, num_layers, filter_multiplier=20, lock_multiplier=5, step=5, cell=Cell,
+                 BatchNorm=NaiveBN, args=None):
         super(newModel, self).__init__()
         self.args = args
+        self._step = step
         self.cells = nn.ModuleList()
         self.network_arch = torch.from_numpy(network_arch)
         self.cell_arch = torch.from_numpy(cell_arch)
         self._num_layers = num_layers
         self._num_classes = num_classes
-        self._step = step
-        self._block_multiplier = block_multiplier
-        self._filter_multiplier = filter_multiplier
-        self._criterion = criterion
+        self._block_multiplier = args.block_multiplier
+        self._filter_multiplier = args.filter_multiplier
         self.use_ABN = args.use_ABN
-        initial_fm = 128
+        initial_fm = 128 if args.initial_fm is None else args.initial_fm
+        half_initial_fm = initial_fm // 2
         self.stem0 = nn.Sequential(
-            nn.Conv2d(3, 64, 3, stride=2, padding=1),
-            BatchNorm(64)
+            nn.Conv2d(3, half_initial_fm, 3, stride=2, padding=1),
+            BatchNorm(half_initial_fm)
         )
         self.stem1 = nn.Sequential(
-            nn.Conv2d(64, 64, 3, padding=1),
-            BatchNorm(64)
+            nn.Conv2d(half_initial_fm, half_initial_fm, 3, padding=1),
+            BatchNorm(half_initial_fm)
         )
         # TODO: first two channels should be set automatically
-        ini_initial_fm = 64
+        ini_initial_fm = half_initial_fm
         self.stem2 = nn.Sequential(
-            nn.Conv2d(64, initial_fm, 3, stride=2, padding=1),
+            nn.Conv2d(half_initial_fm, initial_fm, 3, stride=2, padding=1),
             BatchNorm(initial_fm)
         )
         # C_prev_prev = 64
@@ -119,9 +119,9 @@ class newModel(nn.Module):
             prev_level = torch.argmax(prev_level_option).item()
             prev_prev_level = torch.argmax(prev_prev_level_option).item()
             if i == 0:
-                downup_sample = 0
-                _cell = cell(self._step, self._block_multiplier, ini_initial_fm / block_multiplier,
-                             initial_fm / block_multiplier,
+                downup_sample = - torch.argmax(torch.sum(self.network_arch[0], dim=1))
+                _cell = cell(self._step, self._block_multiplier, ini_initial_fm / args.block_multiplier,
+                             initial_fm / args.block_multiplier,
                              self.cell_arch, self.network_arch[i],
                              self._filter_multiplier *
                              filter_param_dict[level],
@@ -131,8 +131,8 @@ class newModel(nn.Module):
                 downup_sample = torch.argmax(three_branch_options).item() - 1
                 if i == 1:
                     _cell = cell(self._step, self._block_multiplier,
-                                 initial_fm / block_multiplier,
-                                 self._filter_multiplier * 1,
+                                 initial_fm / args.block_multiplier,
+                                 self._filter_multiplier * filter_param_dict[prev_level],
                                  self.cell_arch, self.network_arch[i],
                                  self._filter_multiplier *
                                  filter_param_dict[level],
@@ -154,10 +154,10 @@ class newModel(nn.Module):
         stem1 = self.stem2(stem0)
         two_last_inputs = (stem0, stem1)
         for i in range(self._num_layers):
-            two_last_inputs = self.cells[i](
-                two_last_inputs[0], two_last_inputs[1])
+            two_last_inputs = self.cells[i](two_last_inputs[0], two_last_inputs[1])
             if i == 2:
                 low_level_feature = two_last_inputs[1]
+            print(two_last_inputs[-1].shape)
         last_output = two_last_inputs[-1]
         # else:
         return last_output, low_level_feature
@@ -180,6 +180,14 @@ def network_layer_to_space(net_arch):
             space1[0][layer][sample] = 1
             space = np.concatenate([space, space1], axis=0)
             prev = layer
+    """
+        return:
+        network_space[layer][level][sample]:
+        layer: 0 - 12
+        level: sample_level {0: 1, 1: 2, 2: 4, 3: 8}
+        sample: 0: down 1: None 2: Up
+    """
+
     return space
 
 
@@ -200,13 +208,11 @@ def get_cell():
 
 def get_arch():
     backbone = [0, 0, 0, 1, 2, 1, 2, 2, 3, 3, 2, 1]
-    network_arch = network_layer_to_space(backbone)
     cell_arch = get_cell()
-
-    return network_arch, cell_arch
+    return network_layer_to_space(backbone), cell_arch
 
 
 def get_default_net(args=None):
-    filter_multiplier = args.filter_multiplier
-    net_arch, cell_arch = get_arch()
-    return newModel(net_arch, cell_arch, 19, 12, filter_multiplier=filter_multiplier, args=args)
+    filter_multiplier = args.filter_multiplier if args is not None else 20
+    path_arch, cell_arch = get_arch()
+    return newModel(path_arch, cell_arch, 19, 12, filter_multiplier=filter_multiplier, args=args)

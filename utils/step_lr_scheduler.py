@@ -45,7 +45,8 @@ class Iter_LR_Scheduler(object):
             lr = 0.5 * self.lr * (1 + math.cos(1.0 * iteration / self.max_iteration * math.pi))
         elif self.mode == 'poly':
             lr = self.lr * pow((1 - (iteration - self.warmup_iters) / (self.max_iteration - self.warmup_iters)), 0.9)
-        elif self.mode == 'step':
+        elif self.mode == 'step':  # TODO: Fix the step mode
+            print('Warning! Now the step decline lr exists some issue')
             if not self.lr_step:
                 raise NotImplementedError
             epoch = iteration // self.iters_per_epoch
@@ -53,6 +54,8 @@ class Iter_LR_Scheduler(object):
         else:
             raise NotImplemented
         # warm up lr schedule
+        if iteration == self.warmup_iters:
+            print('==> warmup done, start to implement poly lr strategy')
         if self.warmup_iters > 0 and iteration < self.warmup_iters:
             lr = lr * 1.0 * iteration / self.warmup_iters
         if (not iteration % self.iters_per_epoch) and (iteration // self.iters_per_epoch > self.epoch):
@@ -60,3 +63,6 @@ class Iter_LR_Scheduler(object):
             print('\n=>Epoches %i, learning rate = %.4f' % (epoch, lr))
             self.epoch = epoch
         optimizer.param_groups[0]['lr'] = max(lr, self.min_lr)
+
+    def get_lr(self, optimizer):
+        return optimizer.param_groups[0]['lr']

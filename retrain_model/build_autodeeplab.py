@@ -5,13 +5,15 @@ import torch.nn as nn
 from operations import NaiveBN, ABN
 
 
-class Train_Autodeeplab(nn.Module):
-    def __init__(self, num_classes, args):
-        super(Train_Autodeeplab, self).__init__()
+class Retrain_Autodeeplab(nn.Module):
+    def __init__(self, args):
+        super(Retrain_Autodeeplab, self).__init__()
         BatchNorm2d = ABN if args.use_ABN else NaiveBN
+        if args.use_ABN:
+            print("=> use ABN!")
         self.encoder = get_default_net(args=args)
-        self.aspp = ASPP(args.filter_multiplier * 10, 256, num_classes, conv=nn.Conv2d, norm=BatchNorm2d)
-        self.decoder = Decoder(num_classes,filter_multiplier=args.filter_multiplier*args.block_multiplier)
+        self.aspp = ASPP(args.filter_multiplier * 10, 256, args.num_classes, conv=nn.Conv2d, norm=BatchNorm2d)
+        self.decoder = Decoder(args.num_classes, filter_multiplier=args.filter_multiplier * args.block_multiplier)
 
     def forward(self, x):
         encoder_output, low_level_feature = self.encoder(x)

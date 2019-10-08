@@ -22,3 +22,15 @@ from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
 #         print(">>> {:.5f}K".format(p.numel()))
 #
 #
+import torch
+from retrain_model.new_model import get_default_net
+from retrain_model.build_autodeeplab import Retrain_Autodeeplab
+from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
+
+args = obtain_retrain_autodeeplab_args()
+args.num_classes = 19
+model = Retrain_Autodeeplab(args)
+
+x = torch.randn(2, 3, 129, 129)
+x = model(x)
+print(x.shape)

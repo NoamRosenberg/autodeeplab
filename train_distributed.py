@@ -1,204 +1,122 @@
 import os
+import platform
+import warnings
 import numpy as np
-from tqdm import tqdm
-from mypath import Path
+
+import torch
+import torch.nn as nn
+import torch.utils.data
+import torch.backends.cudnn
 import torch.optim as optim
 import torch.distributed as dist
-from dataloaders import make_data_loader
-from modeling.sync_batchnorm.replicate import patch_replication_callback
-from modeling.deeplab import *
+from torch.autograd import Variable
+
+import dataloaders
+from utils.utils import AverageMeter
 from utils.loss import build_criterion
-from utils.calculate_weights import calculate_weigths_labels
+import retrain_model.new_model as new_model
 from utils.step_lr_scheduler import Iter_LR_Scheduler
-from utils.saver import Saver
-from utils.summaries import TensorboardSummary
-from utils.metrics import Evaluator
+from retrain_model.build_autodeeplab import Retrain_Autodeeplab
 from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
 
 
-class Trainer(object):
+def main():
+    warnings.filterwarnings('ignore')
+    torch.cuda.set_device(args.local_rank)
+    dist.init_process_group(backend='nccl', init_method='tcp://127.0.0.1:{}'.format(args.port),
+                            world_size=torch.cuda.device_count(), rank=args.local_rank)
+    assert torch.cuda.is_available()
+    assert not platform.platform().startswith('Win'), ValueError('Now distributed can not support system {:}'.format(platform.platform()))
+    torch.backends.cudnn.benchmark = True
+    args = obtain_retrain_autodeeplab_args()
+    model_fname = 'data/deeplab_{0}_{1}_v3_{2}_epoch%d.pth'.format(args.backbone, args.dataset, args.exp)
+    if args.dataset == 'pascal':
+        raise NotImplementedError
+    elif args.dataset == 'cityscapes':
+        kwargs = {'num_workers': args.workers, 'pin_memory': True, 'drop_last': True}
+        dataset_loader, num_classes = dataloaders.make_data_loader(args, **kwargs)
+        args.num_classes = num_classes
+    else:
+        raise ValueError('Unknown dataset: {}'.format(args.dataset))
 
-    def __init__(self, args):
-
-        torch.cuda.set_device(args.local_rank)
-        dist.init_process_group(
-            backend='nccl',
-            init_method='tcp://127.0.0.1:{}'.format(args.port),
-            world_size=torch.cuda.device_count(),
-            rank=args.local_rank
-        )
-        self.args = args
-        # Define Saver
-        self.saver = Saver(args)
-        self.saver.save_experiment_config()
-        # Define Tensorboard Summary
-        self.summary = TensorboardSummary(self.saver.experiment_dir, use_dist=True)
-        self.writer = self.summary.create_summary()
-
-        # Define Dataloader
-        kwargs = {'num_workers': args.workers, 'pin_memory': True}
-        self.train_loader, self.sampler, self.val_loader, self.test_loader, self.nclass = make_data_loader(args,
-                                                                                                           **kwargs)
-
-        # Define network
-        model = DeepLab(num_classes=self.nclass,
-                        backbone=args.backbone,
-                        output_stride=args.out_stride,
-                        sync_bn=args.sync_bn,
-                        freeze_bn=args.freeze_bn)
-
-        # Define Optimizer
-        optimizer = optim.SGD(model.parameters(), momentum=args.momentum,
-                              weight_decay=args.weight_decay, nesterov=args.nesterov)
-
-        # Define Criterion
-        # whether to use class balanced weights
-        if args.use_balanced_weights:
-            classes_weights_path = os.path.join(Path.db_root_dir(args.dataset), args.dataset + '_classes_weights.npy')
-            if os.path.isfile(classes_weights_path):
-                weight = np.load(classes_weights_path)
-            else:
-                weight = calculate_weigths_labels(args.dataset, self.train_loader, self.nclass)
-            weight = torch.from_numpy(weight.astype(np.float32))
+    if args.backbone == 'autodeeplab':
+        if args.net_arch is not None and args.cell_arch is not None:
+            net_arch, cell_arch = np.load(args.net_arch), np.load(args.cell_arch)
         else:
-            weight = None
-        self.args.weight = weight
-        if self.args.criterion == 'Ohem':
-            args.thresh = 0.7
-            args.n_min = (self.args.batch_size / len(args.gpu_ids)) * args.crop_size[0] * args.crop_size[1] // 16
-        self.criterion = build_criterion(args)
-        self.model, self.optimizer = model, optimizer
+            network_arch, cell_arch = new_model.get_arch()
+        model = Retrain_Autodeeplab(args)
+    else:
+        raise ValueError('Unknown backbone: {}'.format(args.backbone))
 
-        # Define Evaluator
-        self.evaluator = Evaluator(self.nclass)
-        # Define lr scheduler
-        self.scheduler = Iter_LR_Scheduler(args.lr_scheduler, args.lr, args.max_iteration, len(self.train_loader))
+    if args.criterion == 'Ohem':
+        args.thresh = 0.7
+        args.crop_size = [args.crop_size, args.crop_size] if isinstance(args.crop_size, int) else args.crop_size
+        args.n_min = (args.batch_size / len(args.gpu)) * args.crop_size[0] * args.crop_size[1] // 16
+    criterion = build_criterion(args)
 
-        # Using cuda
-        if args.dist:
-            self.model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank, ],
-                                                             output_device=args.local_rank).cuda()
-        elif args.cuda:
-            self.model = nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
-            patch_replication_callback(self.model)
-            self.model = self.model.cuda()
-
-        # Resuming checkpoint
-        self.best_pred = 0.0
-        if args.resume is not None:
-            if not os.path.isfile(args.resume):
-                raise RuntimeError("=> no checkpoint found at '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
-            args.start_epoch = checkpoint['epoch']
-            if args.cuda:
-                self.model.module.load_state_dict(checkpoint['state_dict'])
+    optimizer = optim.SGD(model.module.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
+    if dist.get_rank() == 0:
+        if args.resume:
+            if os.path.isfile(args.resume):
+                print('=> loading checkpoint {0}'.format(args.resume))
+                checkpoint = torch.load(args.resume)
+                start_epoch = checkpoint['epoch']
+                model.load_state_dict(checkpoint['state_dict'])
+                optimizer.load_state_dict(checkpoint['optimizer'])
+                print('=> loaded checkpoint {0} (epoch {1})'.format(args.resume, checkpoint['epoch']))
             else:
-                self.model.load_state_dict(checkpoint['state_dict'])
-            if not args.ft:
-                self.optimizer.load_state_dict(checkpoint['optimizer'])
-            self.best_pred = checkpoint['best_pred']
-            print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
+                raise ValueError('=> no checkpoint found at {0}'.format(args.resume))
 
-        # Clear start epoch if fine-tuning
-        if args.ft:
-            args.start_epoch = 0
+    model = nn.parallel.DistributedDataParallel(model.train().cuda(), device_ids=[args.local_rank, ], output_device=args.local_rank)
 
-    def training(self, max_iteration):
-        train_loss = 0.0
-        self.model.train()
-        epoch = 0
-        i = 0
-        iter_sample = iter(self.train_loader)
+    if args.freeze_bn:
+        for m in model.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.eval()
+                m.weight.requires_grad = False
+                m.bias.requires_grad = False
 
-        for iteration in range(max_iteration):
-            try:
-                sample = next(iter_sample)
-                i += 1
-            except StopIteration:
-                epoch += 1
-                self.sampler.set_epoch(epoch)
-                diter = iter(self.train_loader)
-                sample = next(diter)
-                i = 0
-            image, target = sample['image'], sample['label']
-            if self.args.cuda:
-                image, target = image.cuda(), target.cuda()
-            self.scheduler(self.optimizer, iteration)
-            self.optimizer.zero_grad()
-            output = self.model(image)
-            loss = self.criterion(output, target)
+    max_iteration = len(dataset_loader) * args.epochs
+    scheduler = Iter_LR_Scheduler(args.mode, args.base_lr, max_iteration, len(dataset_loader))
+    losses = AverageMeter()
+    start_epoch = 0
+
+    for epoch in range(start_epoch, args.epochs):
+        if dist.get_rank() == 0:
+            print('reset local total loss!')
+        losses = AverageMeter()
+        # TODO: check the difference in dataloader
+        for i, (inputs, target) in enumerate(dataset_loader):
+            cur_iter = epoch * len(dataset_loader) + i
+            scheduler(optimizer, cur_iter)
+            inputs = Variable(inputs.cuda())
+            target = Variable(target.cuda())
+            outputs = model(inputs)
+            loss = criterion(outputs, target)
+            losses.update(loss.item(), args.batch_size)
+
             loss.backward()
-            self.optimizer.step()
-            train_loss += loss.item()
-            if dist.get_rank() == 0 and iteration % 10000 == 0:
-                self.writer.add_scalar('train/total_loss_iter', loss.item(), iteration)
-                print('Train loss: %.3f \n' % (train_loss / (iteration + 1)))
-
-            if iteration % 1000 == 0:
-                self.summary.visualize_image(self.writer, self.args.dataset, image, target, output, iteration)
-            # Show 10 * 3 inference results each epoch
+            optimizer.step()
+            optimizer.zero_grad()
+            if dist.get_rank() == 0:
+                print('epoch: {0}\t''iter: {1}/{2}\t''lr: {3:.6f}\t''loss: {loss.val:.4f} ({loss.ema:.4f})'.format(
+                    epoch + 1, i + 1, len(dataset_loader), scheduler.get_lr(optimizer), loss=losses))
 
         if dist.get_rank() == 0:
-            self.writer.add_scalar('train/total_loss_epoch', train_loss, epoch)
-            print('[Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
-            print('Loss: %.3f' % train_loss)
-
-        if (iteration < 490000 and iteration % 10000 == 0) or (iteration >= 490000 and iteration % 100):
-            # save checkpoint every epoch
-            is_best = False
-            self.saver.save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
-                'optimizer': self.optimizer.state_dict(),
-                'best_pred': self.best_pred,
-            }, is_best)
-
-
-def main():
-    args = obtain_retrain_autodeeplab_args()
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
-    if args.cuda:
-        try:
-            args.gpu_ids = [int(s) for s in args.gpu_ids.split(',')]
-        except ValueError:
-            raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
-
-    # default settings for epochs, batch_size and lr
-    if args.epochs is None:
-        epoches = {
-            'coco': 30,
-            'cityscapes': 200,
-            'pascal': 50,
-        }
-        args.epochs = epoches[args.dataset.lower()]
-
-    if args.batch_size is None:
-        args.batch_size = 4 * len(args.gpu_ids)
-
-    if args.test_batch_size is None:
-        args.test_batch_size = args.batch_size
-
-    if args.lr is None:
-        lrs = {
-            'coco': 0.1,
-            'cityscapes': 0.01,
-            'pascal': 0.007,
-        }
-        args.lr = lrs[args.dataset.lower()] / (4 * len(args.gpu_ids)) * args.batch_size
-
-    if args.checkname is None:
-        args.checkname = 'deeplab-' + str(args.backbone)
-    print(args)
-    torch.manual_seed(args.seed)
-    trainer = Trainer(args)
-    print('Starting Epoch:', trainer.args.start_epoch)
-    print('Total Epoches:', trainer.args.epochs)
-    for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
-        trainer.training(epoch)
-
-    trainer.writer.close()
+            if epoch < args.epochs - 50:
+                if epoch % 50 == 0:
+                    torch.save({
+                        'epoch': epoch + 1,
+                        'state_dict': model.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                    }, model_fname % (epoch + 1))
+            else:
+                torch.save({
+                    'epoch': epoch + 1,
+                    'state_dict': model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                }, model_fname % (epoch + 1))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

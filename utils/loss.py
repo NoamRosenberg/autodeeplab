@@ -84,10 +84,13 @@ class OhemCELoss(nn.Module):
 
 
 def build_criterion(args):
+    print("=> Trying bulid {:}loss".format(args.criterion))
     if args.criterion == 'Ohem':
-        return OhemCELoss(thresh=args.thresh, n_min=args.n_min, cuda=args.cuda)
+        return OhemCELoss(thresh=args.thresh, n_min=args.n_min, cuda=True)
     elif args.criterion == 'crossentropy':
-        return SegmentationLosses(weight=args.weight, cuda=args.cuda).build_loss(args.mode)
+        return SegmentationLosses(weight=args.weight, cuda=True).build_loss(args.mode)
+    else:
+        raise ValueError('unknown criterion : {:}'.format(args.criterion))
 
 
 if __name__ == "__main__":

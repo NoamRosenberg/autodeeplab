@@ -1,28 +1,26 @@
 from dataloaders.datasets import cityscapes, kd, coco, combine_dbs, pascal, sbd
 from torch.utils.data import DataLoader
-import torch.distributed as dist
 import torch.utils.data.distributed
 
 
 def make_data_loader(args, **kwargs):
     if args.dist:
+        print("=> Using Distribued Sampler")
         if args.dataset == 'cityscapes':
-
             if args.autodeeplab == 'search':
                 train_set1, train_set2 = cityscapes.twoTrainSeg(args)
                 num_class = train_set1.NUM_CLASSES
                 sampler1 = torch.utils.data.distributed.DistributedSampler(train_set1)
                 sampler2 = torch.utils.data.distributed.DistributedSampler(train_set2)
-                train_loader1 = DataLoader(train_set1, batch_size=args.batch_size, shuffle=False, sampler=sampler1,
-                                           **kwargs)
-                train_loader2 = DataLoader(train_set2, batch_size=args.batch_size, shuffle=False, sampler=sampler2,
-                                           **kwargs)
+                train_loader1 = DataLoader(train_set1, batch_size=args.batch_size, shuffle=False, sampler=sampler1, **kwargs)
+                train_loader2 = DataLoader(train_set2, batch_size=args.batch_size, shuffle=False, sampler=sampler2, **kwargs)
+
             elif args.autodeeplab == 'train':
                 train_set = cityscapes.CityscapesSegmentation(args, split='train')
                 num_class = train_set.NUM_CLASSES
                 sampler1 = torch.utils.data.distributed.DistributedSampler(train_set)
-                train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=False, sampler=sampler1,
-                                          **kwargs)
+                train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=False, sampler=sampler1, **kwargs)
+
             else:
                 raise Exception('autodeeplab param not set properly')
 
@@ -36,7 +34,7 @@ def make_data_loader(args, **kwargs):
             if args.autodeeplab == 'search':
                 return train_loader1, train_loader2, val_loader, test_loader, num_class
             elif args.autodeeplab == 'train':
-                return train_loader, sampler1, val_loader, test_loader, num_class
+                return train_loader, num_class
         else:
             raise NotImplementedError
 
@@ -76,7 +74,8 @@ def make_data_loader(args, **kwargs):
             if args.autodeeplab == 'search':
                 return train_loader1, train_loader2, val_loader, test_loader, num_class
             elif args.autodeeplab == 'train':
-                return train_loader, val_loader, test_loader, num_class
+                return train_loader, num_class
+
 
 
         elif args.dataset == 'coco':
