@@ -11,5 +11,13 @@ import torch
 from retrain_model.build_autodeeplab import Retrain_Autodeeplab
 from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
 from utils.step_lr_scheduler import Iter_LR_Scheduler
+from utils.optimizer_distributed import Optimizer
 
 args = obtain_retrain_autodeeplab_args()
+
+args.num_classes = 19
+model = Retrain_Autodeeplab(args)
+optimizer = Optimizer(model, args, 5000)
+for i in range(5000):
+    optimizer.step()
+    print(optimizer.get_lr())

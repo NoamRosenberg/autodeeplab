@@ -18,10 +18,10 @@ from utils.step_lr_scheduler import Iter_LR_Scheduler
 from retrain_model.build_autodeeplab import Retrain_Autodeeplab
 from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
 
-warnings.filterwarnings('ignore')
 
 
 def main():
+    warnings.filterwarnings('ignore')
     assert torch.cuda.is_available()
     torch.backends.cudnn.benchmark = True
     args = obtain_retrain_autodeeplab_args()
@@ -57,7 +57,7 @@ def main():
     optimizer = optim.SGD(model.module.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
 
     max_iteration = len(dataset_loader) * args.epochs
-    scheduler = Iter_LR_Scheduler(args.mode, args.base_lr, max_iteration, len(dataset_loader))
+    scheduler = Iter_LR_Scheduler(args, max_iteration, len(dataset_loader))
     losses = AverageMeter()
     start_epoch = 0
 

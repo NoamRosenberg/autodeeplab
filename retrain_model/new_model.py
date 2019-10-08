@@ -162,6 +162,18 @@ class newModel(nn.Module):
         return last_output, low_level_feature
 
 
+    def get_params(self):
+        bn_params = []
+        non_bn_params = []
+        for name, param in self.named_parameters():
+            if 'bn' in name or 'downsample.1' in name:
+                bn_params.append(param)
+            else:
+                bn_params.append(param)
+        return bn_params, non_bn_params
+
+
+
 def network_layer_to_space(net_arch):
     for i, layer in enumerate(net_arch):
         if i == 0:

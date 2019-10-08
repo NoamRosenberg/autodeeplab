@@ -60,7 +60,7 @@ def make_data_loader(args, **kwargs):
                 train_loader1 = DataLoader(train_set1, batch_size=args.batch_size, shuffle=True, **kwargs)
                 train_loader2 = DataLoader(train_set2, batch_size=args.batch_size, shuffle=True, **kwargs)
             elif args.autodeeplab == 'train':
-                train_set = cityscapes.CityscapesSegmentation(args, split='train')
+                train_set = cityscapes.CityscapesSegmentation(args, split='retrain')
                 num_class = train_set.NUM_CLASSES
                 train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, **kwargs)
             else:

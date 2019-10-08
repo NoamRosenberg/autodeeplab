@@ -27,3 +27,11 @@ class Retrain_Autodeeplab(nn.Module):
         high_level_feature = self.aspp(encoder_output)
         decoder_output = self.decoder(encoder_output, low_level_feature)
         return nn.Upsample((x.shape[2], x.shape[3]), mode='bilinear', align_corners=True)(decoder_output)
+
+    def get_params(self):
+        back_bn_params, back_no_bn_params = self.encoder.get_params()
+        tune_wd_params = list(self.aspp.parameters()) \
+                         + list(self.decoder.parameters()) \
+                         + back_no_bn_params
+        no_tune_wd_params = back_bn_params
+        return tune_wd_params, no_tune_wd_params

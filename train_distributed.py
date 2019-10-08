@@ -15,12 +15,13 @@ import dataloaders
 from utils.utils import AverageMeter
 from utils.loss import build_criterion
 import retrain_model.new_model as new_model
-from utils.step_lr_scheduler_dist import Iter_LR_Scheduler
+from utils.optimizer_distributed import Optimizer
 from retrain_model.build_autodeeplab import Retrain_Autodeeplab
 from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
 
 
 def main():
+    args = obtain_retrain_autodeeplab_args()
     warnings.filterwarnings('ignore')
     torch.cuda.set_device(args.local_rank)
     dist.init_process_group(backend='nccl', init_method='tcp://127.0.0.1:{}'.format(args.port),
@@ -28,7 +29,6 @@ def main():
     assert torch.cuda.is_available()
     assert not platform.platform().startswith('Win'), ValueError('Now distributed can not support system {:}'.format(platform.platform()))
     torch.backends.cudnn.benchmark = True
-    args = obtain_retrain_autodeeplab_args()
     model_fname = 'data/deeplab_{0}_{1}_v3_{2}_epoch%d.pth'.format(args.backbone, args.dataset, args.exp)
     if args.dataset == 'pascal':
         raise NotImplementedError
@@ -51,10 +51,12 @@ def main():
     if args.criterion == 'Ohem':
         args.thresh = 0.7
         args.crop_size = [args.crop_size, args.crop_size] if isinstance(args.crop_size, int) else args.crop_size
-        args.n_min = (args.batch_size / len(args.gpu)) * args.crop_size[0] * args.crop_size[1] // 16
+        args.n_min = int((args.batch_size / len(args.gpu)) * args.crop_size[0] * args.crop_size[1] // 16)
     criterion = build_criterion(args)
 
-    optimizer = optim.SGD(model.module.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
+    max_iteration = len(dataset_loader) * args.epochs
+
+    optimizer = Optimizer(model, args, max_iteration=max_iteration)
     if args.resume:
         if os.path.isfile(args.resume):
             if dist.get_rank() == 0:
@@ -62,7 +64,7 @@ def main():
             checkpoint = torch.load(args.resume)
             start_epoch = checkpoint['epoch']
             model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
+            # optimizer.load_state_dict(checkpoint['optimizer'])
             if dist.get_rank() == 0:
                 print('=> loaded checkpoint {0} (epoch {1})'.format(args.resume, checkpoint['epoch']))
         else:
@@ -78,26 +80,23 @@ def main():
                 m.weight.requires_grad = False
                 m.bias.requires_grad = False
 
-    max_iteration = len(dataset_loader) * args.epochs
-    scheduler = Iter_LR_Scheduler(args.mode, args.base_lr, max_iteration, len(dataset_loader))
     losses = AverageMeter()
 
     for epoch in range(start_epoch, args.epochs):
         losses = AverageMeter()
         for i, sample in enumerate(dataset_loader):
             cur_iter = epoch * len(dataset_loader) + i
-            scheduler(optimizer, cur_iter)
             inputs = Variable(sample['image'].cuda())
             target = Variable(sample['label'].cuda())
             outputs = model(inputs)
             loss = criterion(outputs, target)
             losses.update(loss.item(), args.batch_size)
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            optimizer.zero_grad()
             if dist.get_rank() == 0:
                 print('epoch: {0}\t''iter: {1}/{2}\t''lr: {3:.6f}\t''loss: {loss.val:.4f} ({loss.ema:.4f})'.format(
-                    epoch + 1, i + 1, len(dataset_loader), scheduler.get_lr(optimizer), loss=losses))
+                    epoch + 1, i + 1, len(dataset_loader), Optimizer.get_lr(optimizer), loss=losses))
 
         if dist.get_rank() == 0:
             if epoch < args.epochs - 50:
@@ -105,16 +104,15 @@ def main():
                     torch.save({
                         'epoch': epoch + 1,
                         'state_dict': model.state_dict(),
-                        'optimizer': optimizer.state_dict(),
+                        # 'optimizer': optimizer.state_dict(),
                     }, model_fname % (epoch + 1))
             else:
                 torch.save({
                     'epoch': epoch + 1,
                     'state_dict': model.state_dict(),
-                    'optimizer': optimizer.state_dict(),
+                    # 'optimizer': optimizer.state_dict(),
                 }, model_fname % (epoch + 1))
 
             print('reset local total loss!')
-
 if __name__ == "__main__":
     main()
