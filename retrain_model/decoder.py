@@ -9,13 +9,15 @@ from operations import NaiveBN
 
 
 class Decoder(nn.Module):
-    def __init__(self, num_classes, filter_multiplier, BatchNorm=NaiveBN):
+    def __init__(self, num_classes, filter_multiplier, BatchNorm=NaiveBN, args=None, last_level=0):
         super(Decoder, self).__init__()
         low_level_inplanes = filter_multiplier
-
-        self.conv1 = nn.Conv2d(low_level_inplanes, 48, 1, bias=False)
+        C_low = 48
+        filter_param_dict = {0: 1, 1: 2, 2: 4, 3: 8}
+        self.conv1 = nn.Conv2d(low_level_inplanes, C_low, 1, bias=False)
         self.bn1 = BatchNorm(48)
-        self.last_conv = nn.Sequential(nn.Conv2d(248, 256, kernel_size=3, stride=1, padding=1, bias=False),
+        self.last_conv = nn.Sequential(nn.Conv2d(C_low + args.filter_multiplier * args.block_multiplier * filter_param_dict[last_level],
+                                                 256, kernel_size=3, stride=1, padding=1, bias=False),
                                        BatchNorm(256),
                                        nn.Dropout(0.5),
                                        nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),

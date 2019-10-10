@@ -17,7 +17,6 @@ args = obtain_retrain_autodeeplab_args()
 
 args.num_classes = 19
 model = Retrain_Autodeeplab(args)
-optimizer = Optimizer(model, args, 5000)
-for i in range(5000):
-    optimizer.step()
-    print(optimizer.get_lr())
+x = torch.randn(2, 3, 129, 129)
+model(x)
+

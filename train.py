@@ -1,4 +1,5 @@
 import os
+import os.path as osp
 import pdb
 import warnings
 import numpy as np
@@ -26,6 +27,8 @@ def main():
     torch.backends.cudnn.benchmark = True
     args = obtain_retrain_autodeeplab_args()
     model_fname = 'data/deeplab_{0}_{1}_v3_{2}_epoch%d.pth'.format(args.backbone, args.dataset, args.exp)
+    if not osp.exists('data'):
+        os.makedirs('data')
     if args.dataset == 'pascal':
         raise NotImplementedError
     elif args.dataset == 'cityscapes':
