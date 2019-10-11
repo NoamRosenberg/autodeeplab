@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from modeling.deeplab import *
 from decoding_formulas import Decoder
 from config_utils.decode_args import obtain_decode_args
@@ -46,15 +47,15 @@ def get_new_network_cell():
     print('architecture search results:', network_path)
     print('new cell structure:', genotype)
 
-    # dir_name = os.path.dirname(args.resume)
-    # network_path_filename = os.path.join(dir_name, 'network_path')
-    # network_path_space_filename = os.path.join(dir_name, 'network_path_space')
-    # genotype_filename = os.path.join(dir_name, 'genotype')
-    # np.save(network_path_filename, network_path)
-    # np.save(network_path_space_filename, network_path_space)
-    # np.save(genotype_filename, genotype)
-    #
-    # print('saved to :', dir_name)
+    dir_name = os.path.dirname(args.resume)
+    network_path_filename = os.path.join(dir_name, 'network_path')
+    network_path_space_filename = os.path.join(dir_name, 'network_path_space')
+    genotype_filename = os.path.join(dir_name, 'genotype')
+    np.save(network_path_filename, network_path)
+    np.save(network_path_space_filename, network_path_space)
+    np.save(genotype_filename, genotype)
+
+    print('saved to :', dir_name)
 
 
 if __name__ == '__main__':
