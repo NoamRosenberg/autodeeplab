@@ -77,8 +77,8 @@ def main():
         for i, sample in enumerate(dataset_loader):
             cur_iter = epoch * len(dataset_loader) + i
             scheduler(optimizer, cur_iter)
-            inputs = Variable(sample['image'].cuda())
-            target = Variable(sample['label'].cuda())
+            inputs = sample['image'].cuda()
+            target = sample['label'].cuda()
             outputs = model(inputs)
             loss = criterion(outputs, target)
             if np.isnan(loss.item()) or np.isinf(loss.item()):
