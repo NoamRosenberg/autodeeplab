@@ -1,32 +1,13 @@
 import numpy as np
 import torch
+from genotypes import Genotype
 import torch.nn.functional as F
 from genotypes import PRIMITIVES
-from genotypes import Genotype
-
-def network_layer_to_space(net_arch):
-    for i, layer in enumerate(net_arch):
-        if i == 0:
-            space = np.zeros((1, 4, 3))
-            space[0][layer][0] = 1
-            prev = layer
-        else:
-            if layer == prev + 1:
-                sample = 0
-            elif layer == prev:
-                sample = 1
-            elif layer == prev - 1:
-                sample = 2
-            space1 = np.zeros((1, 4, 3))
-            space1[0][layer][sample] = 1
-            space = np.concatenate([space, space1], axis=0)
-            prev = layer
-    return space
-
+from retrain_model.new_model import network_layer_to_space
 
 class Decoder(object):
     def __init__(self, alphas, betas, steps):
-        self._betas = betas
+        self._betas = betas * 1e3
         self._alphas = alphas
         self._steps = steps
         self._num_layers = len(self._betas)
@@ -48,6 +29,7 @@ class Decoder(object):
                 self.network_space[layer][1] = F.softmax(self._betas[layer][1], dim=-1)
                 self.network_space[layer][2] = F.softmax(self._betas[layer][2], dim=-1)
                 self.network_space[layer][3][:1] = F.softmax(self._betas[layer][3][:1], dim=-1)
+        print(self.network_space)
 
     def viterbi_decode(self):
         prob_space = np.zeros((self.network_space.shape[:2]))
@@ -82,7 +64,6 @@ class Decoder(object):
             actual_path[-i - 1] = actual_path[-i] + path_space[self._num_layers - i, actual_path[-i]]
 
         return actual_path, network_layer_to_space(actual_path)
-
 
     def dfs_decode(self):
         best_result = []
@@ -296,7 +277,7 @@ class Decoder(object):
                 n += 1
             return np.array(gene)
 
-        normalized_alphas = F.softmax(self.alphas, dim=-1).data.cpu().numpy()
-        gene_cell = _parse(normalized_alphas, self.steps)
+        normalized_alphas = F.softmax(self._alphas, dim=-1).data.cpu().numpy()
+        gene_cell = _parse(normalized_alphas, self._steps)
 
         return gene_cell
