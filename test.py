@@ -35,7 +35,7 @@ args = obtain_search_args()
 
 args.num_classes = 19
 # model = Retrain_Autodeeplab(args)
-model = AutoDeeplab(19, 12, args=args,filter_multiplier=4)
+model = AutoDeeplab(19, 12)
 
 grads = {}
 #

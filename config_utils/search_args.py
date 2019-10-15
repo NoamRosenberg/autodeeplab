@@ -73,11 +73,10 @@ def obtain_search_args():
     parser.add_argument('--nesterov', action='store_true', default=False,
                         help='whether use nesterov (default: False)')
     # cuda, seed and logging
-    parser.add_argument('--no-cuda', action='store_true', default=
-    False, help='disables CUDA training')
+    parser.add_argument('--no-cuda', action='store_true',
+                        default=False, help='disables CUDA training')
 
-    parser.add_argument('--use_amp', action='store_true', default=
-    False)
+    parser.add_argument('--use_amp', action='store_true', default=False)
     parser.add_argument('--gpu-ids', type=str, default='0',
                         help='use which gpu to train, must be a \
                         comma-separated list of integers only (default=0)')
@@ -96,9 +95,7 @@ def obtain_search_args():
                         help='evaluuation interval (default: 1)')
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
-
-    parser.add_argument('--use-ABN', default=False, type=bool, help='whether use ABN')
-    parser.add_argument('--affine', default=False, type=bool, help='whether use affine in BN')
-    parser.add_argument('--dist', default=False, type=bool, help='whether use dist')
+    parser.add_argument('--affine', default=False,
+                        type=bool, help='whether use affine in BN')
     args = parser.parse_args()
     return args
