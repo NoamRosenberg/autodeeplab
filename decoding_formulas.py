@@ -302,16 +302,15 @@ class Decoder(object):
             n = 2
             for i in range(steps):
                 end = start + n
-                edges = sorted(range(start, end), key=lambda x: -np.max(alphas[x, 1:]))  # ignore none value
+                edges = sorted(range(start, end), key=lambda x: -np.max(alphas[x,1:])) #ignore none value
                 top2edges = edges[:2]
                 for j in top2edges:
-                    best_op_index = np.argmax(alphas[j])  # this can include none op
+                    best_op_index = np.argmax(alphas[j]) #this can include none op
                     gene.append([j, best_op_index])
                 start = end
                 n += 1
             return np.array(gene)
-
-        normalized_alphas = F.softmax(self._alphas, dim=-1).data.cpu().numpy()
-        gene_cell = _parse(normalized_alphas, self._steps)
+        normalized_alphas = F.softmax(self.alphas, dim=-1).data.cpu().numpy()
+        gene_cell = _parse(normalized_alphas, self.steps)
 
         return gene_cell
