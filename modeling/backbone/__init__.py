@@ -1,5 +1,5 @@
 from modeling.backbone import resnet, xception, drn, mobilenet
-from new_model import newModel,get_default_net
+from retrain_model.new_model import get_default_net
 
 def build_backbone(backbone, output_stride, BatchNorm, args):
     if backbone == 'resnet':

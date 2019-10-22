@@ -1,20 +1,15 @@
-import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 from operations import *
-from torch.autograd import Variable
 from genotypes import PRIMITIVES
-from genotypes import Genotype
 
 
-class MixedOp (nn.Module):
+class MixedOp(nn.Module):
 
     def __init__(self, C, stride):
         super(MixedOp, self).__init__()
         self._ops = nn.ModuleList()
         for primitive in PRIMITIVES:
-            op = OPS[primitive](C, stride, False)
+            op = OPS[primitive](C, stride, False, False)
             if 'pool' in primitive:
                 op = nn.Sequential(op, nn.BatchNorm2d(C, affine=False))
             self._ops.append(op)
@@ -59,7 +54,7 @@ class Cell(nn.Module):
         self._ops = nn.ModuleList()
 
         for i in range(self._steps):
-            for j in range(2+i):
+            for j in range(2 + i):
                 stride = 1
                 if prev_prev_fmultiplier == -1 and j == 0:
                     op = None
@@ -67,7 +62,7 @@ class Cell(nn.Module):
                     op = MixedOp(self.C_out, stride)
                 self._ops.append(op)
 
-        #self.ReLUConvBN = ReLUConvBN(self.C_in, self.C_out, 1, 1, 0)
+        # self.ReLUConvBN = ReLUConvBN(self.C_in, self.C_out, 1, 1, 0)
 
     def scale_dimension(self, dim, scale):
         assert isinstance(dim, int)
@@ -81,7 +76,7 @@ class Cell(nn.Module):
             feature_size_h = self.scale_dimension(prev_feature.shape[2], 2)
             feature_size_w = self.scale_dimension(prev_feature.shape[3], 2)
 
-        return F.interpolate(prev_feature, (feature_size_h, feature_size_w), mode='bilinear')
+        return F.interpolate(prev_feature, (feature_size_h, feature_size_w), mode='bilinear', align_corners=True)
 
     def forward(self, s0, s1_down, s1_same, s1_up, n_alphas):
 
@@ -99,8 +94,7 @@ class Cell(nn.Module):
         all_states = []
         if s0 is not None:
             # s0 = self.pre_preprocess(s0)
-            s0 = F.interpolate(s0, (size_h, size_w), mode='bilinear') if (
-                s0.shape[2] != size_h) or (s0.shape[3] != size_w) else s0
+            s0 = F.interpolate(s0, (size_h, size_w), mode='bilinear', align_corners=True) if (s0.shape[2] != size_h) or (s0.shape[3] != size_w) else s0
             s0 = self.pre_preprocess(s0) if (s0.shape[1] != self.C_out) else s0
             if s1_down is not None:
                 states_down = [s0, s1_down]

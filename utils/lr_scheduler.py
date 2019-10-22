@@ -10,6 +10,7 @@
 
 import math
 
+
 class LR_Scheduler(object):
     """Learning Rate Scheduler
 
@@ -27,8 +28,9 @@ class LR_Scheduler(object):
 
         iters_per_epoch: number of iterations per epoch
     """
+
     def __init__(self, mode, base_lr, num_epochs, iters_per_epoch=0,
-                 lr_step=0, warmup_epochs=0, min_lr = None):
+                 lr_step=0, warmup_epochs=0, min_lr=None):
         self.mode = mode
         print('Using {} LR Scheduler!'.format(self.mode))
         self.lr = base_lr

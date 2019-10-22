@@ -5,22 +5,22 @@ from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 from modeling.aspp import build_aspp
 from modeling.decoder import build_decoder
 from modeling.backbone import build_backbone
+from operations import ABN, NaiveBN
 
 
 class DeepLab(nn.Module):
     def __init__(self, backbone='resnet', output_stride=16, num_classes=19,
-                 sync_bn=True, freeze_bn=False, args=None, separate=False):
+                 use_ABN=True, freeze_bn=False, args=None, separate=False):
         super(DeepLab, self).__init__()
         if backbone == 'drn':
             output_stride = 8
 
-        if sync_bn == True:
-            BatchNorm = SynchronizedBatchNorm2d
+        if use_ABN:
+            BatchNorm = ABN
         else:
-            BatchNorm = nn.BatchNorm2d
+            BatchNorm = NaiveBN
 
-        self.backbone = build_backbone(
-            backbone, output_stride, BatchNorm, args)
+        self.backbone = build_backbone(backbone, output_stride, BatchNorm, args)
         self.aspp = build_aspp(backbone, output_stride, BatchNorm, args, separate)
         self.decoder = build_decoder(
             num_classes, backbone, BatchNorm, args, separate)
@@ -28,18 +28,17 @@ class DeepLab(nn.Module):
         if freeze_bn:
             self.freeze_bn()
 
-    def forward(self, input):
-        x, low_level_feat = self.backbone(input)
+    def forward(self, input_feature):
+        x, low_level_feat = self.backbone(input_feature)
         x = self.aspp(x)
         x = self.decoder(x, low_level_feat)
-        x = F.interpolate(x, size=input.size()[
-                          2:], mode='bilinear', align_corners=True)
+        x = F.interpolate(x, size=input_feature.shape[2:], mode='bilinear', align_corners=True)
 
         return x
 
     def freeze_bn(self):
         for m in self.modules():
-            if isinstance(m, SynchronizedBatchNorm2d):
+            if isinstance(m, ABN):
                 m.eval()
             elif isinstance(m, nn.BatchNorm2d):
                 m.eval()
