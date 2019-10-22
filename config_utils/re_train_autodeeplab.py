@@ -26,7 +26,7 @@ def obtain_retrain_autodeeplab_args():
     parser.add_argument('--workers', type=int, default=4, help='number of data loading workers')
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
     parser.add_argument('--resume', type=str, default=None, help='put the path to resuming file if needed')
-    parser.add_argument('--filter_multiplier', type=int, default=20)
+    parser.add_argument('--filter_multiplier', type=int, default=32)
     parser.add_argument('--dist', type=bool, default=False)
     parser.add_argument('--autodeeplab', type=str, default='train')
     parser.add_argument('--block_multiplier', type=int, default=5)

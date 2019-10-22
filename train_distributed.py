@@ -42,7 +42,6 @@ def main():
         train_log_string = 'train_' + log_string
         val_log_string = 'val_' + log_string
         train_logger = Logger(args, log_string)
-        val_logger = Logger(args, val_log_string)
         train_logger.log('Arguments : -------------------------------')
         for name, value in args._get_kwargs():
             train_logger.log('{:16} : {:}'.format(name, value))
@@ -81,14 +80,11 @@ def main():
     # train loop
     loss_avg = []
     start_time = glob_start_time = time.time()
-    n_epoch = 0
     # for it in range(cfg.max_iter):
     for epoch in range(cfg.max_epoch):
         for sample in train_loader:
             im = sample['image'].cuda()
             lb = sample['label'].cuda()
-
-            H, W = im.size()[2:]
             lb = torch.squeeze(lb, 1)
 
             optimizer.zero_grad()
@@ -120,7 +116,6 @@ def main():
                 else:
                     print(msg)
                 loss_avg = []
-                st = ed
             it += 1
 
 

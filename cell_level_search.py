@@ -1,22 +1,17 @@
-import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 from operations import *
-from torch.autograd import Variable
 from genotypes import PRIMITIVES
-from genotypes import Genotype
 
 
 class MixedOp(nn.Module):
 
-    def __init__(self, C, stride, affine=False, use_ABN=False):
+    def __init__(self, C, stride):
         super(MixedOp, self).__init__()
         self._ops = nn.ModuleList()
         for primitive in PRIMITIVES:
-            op = OPS[primitive](C, stride, affine, use_ABN)
+            op = OPS[primitive](C, stride, False, False)
             if 'pool' in primitive:
-                op = nn.Sequential(op, nn.BatchNorm2d(C, affine=affine))
+                op = nn.Sequential(op, nn.BatchNorm2d(C, affine=False))
             self._ops.append(op)
 
     def forward(self, x, weights):
@@ -27,7 +22,7 @@ class Cell(nn.Module):
 
     def __init__(self, steps, block_multiplier, prev_prev_fmultiplier,
                  prev_fmultiplier_down, prev_fmultiplier_same, prev_fmultiplier_up,
-                 filter_multiplier, args=None):
+                 filter_multiplier):
 
         super(Cell, self).__init__()
 
@@ -37,18 +32,22 @@ class Cell(nn.Module):
         self.C_prev_prev = int(prev_prev_fmultiplier * block_multiplier)
         self._prev_fmultiplier_same = prev_fmultiplier_same
 
-        #TODO:Do we need relu and bn in preprocess?
         if prev_fmultiplier_down is not None:
             self.C_prev_down = int(prev_fmultiplier_down * block_multiplier)
-            self.preprocess_down = ReLUConvBN(self.C_prev_down, self.C_out, 1, 1, 0, args.affine, args.use_ABN)
+            self.preprocess_down = ReLUConvBN(
+                self.C_prev_down, self.C_out, 1, 1, 0, affine=False)
         if prev_fmultiplier_same is not None:
             self.C_prev_same = int(prev_fmultiplier_same * block_multiplier)
-            self.preprocess_same = ReLUConvBN(self.C_prev_same, self.C_out, 1, 1, 0, args.affine, args.use_ABN)
+            self.preprocess_same = ReLUConvBN(
+                self.C_prev_same, self.C_out, 1, 1, 0, affine=False)
         if prev_fmultiplier_up is not None:
             self.C_prev_up = int(prev_fmultiplier_up * block_multiplier)
-            self.preprocess_up = ReLUConvBN(self.C_prev_up, self.C_out, 1, 1, 0, args.affine, args.use_ABN)
+            self.preprocess_up = ReLUConvBN(
+                self.C_prev_up, self.C_out, 1, 1, 0, affine=False)
+
         if prev_prev_fmultiplier != -1:
-            self.pre_preprocess = ReLUConvBN(self.C_prev_prev, self.C_out, 1, 1, 0, args.affine, args.use_ABN)
+            self.pre_preprocess = ReLUConvBN(
+                self.C_prev_prev, self.C_out, 1, 1, 0, affine=False)
 
         self._steps = steps
         self.block_multiplier = block_multiplier
@@ -59,8 +58,6 @@ class Cell(nn.Module):
                 stride = 1
                 if prev_prev_fmultiplier == -1 and j == 0:
                     op = None
-                elif args is not None:
-                    op = MixedOp(self.C_out, stride, args.affine, args.use_ABN)
                 else:
                     op = MixedOp(self.C_out, stride)
                 self._ops.append(op)
@@ -79,7 +76,7 @@ class Cell(nn.Module):
             feature_size_h = self.scale_dimension(prev_feature.shape[2], 2)
             feature_size_w = self.scale_dimension(prev_feature.shape[3], 2)
 
-        return F.interpolate(prev_feature, (feature_size_h, feature_size_w), mode='bilinear')
+        return F.interpolate(prev_feature, (feature_size_h, feature_size_w), mode='bilinear', align_corners=True)
 
     def forward(self, s0, s1_down, s1_same, s1_up, n_alphas):
 
@@ -97,8 +94,7 @@ class Cell(nn.Module):
         all_states = []
         if s0 is not None:
             # s0 = self.pre_preprocess(s0)
-            s0 = F.interpolate(s0, (size_h, size_w), mode='bilinear') if (s0.shape[2] != size_h) or (
-                    s0.shape[3] != size_w) else s0
+            s0 = F.interpolate(s0, (size_h, size_w), mode='bilinear', align_corners=True) if (s0.shape[2] != size_h) or (s0.shape[3] != size_w) else s0
             s0 = self.pre_preprocess(s0) if (s0.shape[1] != self.C_out) else s0
             if s1_down is not None:
                 states_down = [s0, s1_down]
