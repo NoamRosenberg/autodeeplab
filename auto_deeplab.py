@@ -18,7 +18,6 @@ class AutoDeeplab(nn.Module):
         self._filter_multiplier = filter_multiplier
         self._criterion = criterion
         self._initialize_alphas_betas()
-        self._args = args
         f_initial = int(self._filter_multiplier)
         half_f_initial = int(f_initial / 2)
 
@@ -324,7 +323,6 @@ class AutoDeeplab(nn.Module):
                 self.level_8.append(level8_new)
                 self.level_16.append(level16_new)
                 self.level_32.append(level32_new)
-
 
             else:
                 level4_new_1, level4_new_2 = self.cells[count](self.level_4[-2],
