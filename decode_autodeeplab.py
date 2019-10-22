@@ -61,15 +61,11 @@ class Loader(object):
                     self.model.load_state_dict(checkpoint['state_dict'])
 
         self.decoder = Decoder(self.model.alphas,
-                               self.model.bottom_betas,
-                               self.model.betas8,
-                               self.model.betas16,
-                               self.model.top_betas,
-                               args.block_multiplier,
+                               self.model.betas,
                                args.step)
 
     def retreive_alphas_betas(self):
-        return self.model.alphas, self.model.bottom_betas, self.model.betas8, self.model.betas16, self.model.top_betas
+        return self.model.alphas, self.model.betas
 
     def decode_architecture(self):
         paths, paths_space = self.decoder.viterbi_decode()

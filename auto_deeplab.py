@@ -151,8 +151,6 @@ class AutoDeeplab (nn.Module) :
             ASPP (self._filter_multiplier * 8 * self._block_multiplier, self._num_classes, 3, 3) #96 / 32
         )
 
-
-
     def forward (self, x) :
         #TODO: GET RID OF THESE LISTS, we dont need to keep everything.
         #TODO: Is this the reason for the memory issue ?
@@ -165,12 +163,12 @@ class AutoDeeplab (nn.Module) :
         self.level_4.append (self.stem2 (temp))
 
         count = 0
-        normalized_betas = [[[0]*3]*4]*12
+        normalized_betas = torch.randn(12, 4, 3).cuda()
+
         # Softmax on alphas and betas
         if torch.cuda.device_count() > 1:
             img_device = torch.device('cuda', x.get_device())
-            normalized_alphas = F.softmax(self.alphas.to(device=img_device), dim=-1)
-            
+            normalized_alphas = F.softmax(self.alphas.to(device=img_device), dim=-1)        
             # normalized_betas[layer][ith node][0 : ➚, 1: ➙, 2 : ➘]
             for layer in range (len(self.betas)):
                 if layer == 0:
@@ -188,11 +186,10 @@ class AutoDeeplab (nn.Module) :
                     normalized_betas[layer][0][1:] = F.softmax (self.betas[layer][0][1:].to(device=img_device), dim=-1)
                     normalized_betas[layer][1] = F.softmax (self.betas[layer][1].to(device=img_device), dim=-1)
                     normalized_betas[layer][2] = F.softmax (self.betas[layer][2].to(device=img_device), dim=-1)
-                    normalized_betas[layer][3][:1] = F.softmax (self.betas[layer][3][:1].to(device=img_device), dim=-1)
+                    normalized_betas[layer][3][:2] = F.softmax (self.betas[layer][3][:2].to(device=img_device), dim=-1)
 
         else:
             normalized_alphas = F.softmax(self.alphas, dim=-1)
-
             for layer in range (len(self.betas)):
                 if layer == 0:
                     normalized_betas[layer][0][1:] = F.softmax (self.betas[layer][0][1:], dim=-1)
@@ -209,7 +206,7 @@ class AutoDeeplab (nn.Module) :
                     normalized_betas[layer][0][1:] = F.softmax (self.betas[layer][0][1:], dim=-1)
                     normalized_betas[layer][1] = F.softmax (self.betas[layer][1], dim=-1)
                     normalized_betas[layer][2] = F.softmax (self.betas[layer][2], dim=-1)
-                    normalized_betas[layer][3][:1] = F.softmax (self.betas[layer][3][:1], dim=-1)
+                    normalized_betas[layer][3][:2] = F.softmax (self.betas[layer][3][:2], dim=-1)
 
         for layer in range (self._num_layers) :
 
