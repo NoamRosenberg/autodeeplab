@@ -7,11 +7,7 @@ from decoding_formulas import Decoder
 
 
 class AutoDeeplab(nn.Module):
-<<<<<<< HEAD
-    def __init__(self, num_classes, num_layers, criterion=None, filter_multiplier=8, block_multiplier=5, step=5, cell=cell_level_search.Cell, args=None):
-=======
     def __init__(self, num_classes, num_layers, criterion=None, filter_multiplier=8, block_multiplier=5, step=5, cell=cell_level_search.Cell):
->>>>>>> 39648946ee3d530215ee75b22392eaf99c06d1bb
         super(AutoDeeplab, self).__init__()
 
         self.cells = nn.ModuleList()
