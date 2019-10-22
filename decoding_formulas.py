@@ -6,9 +6,7 @@ from retrain_model.new_model import network_layer_to_space
 
 class Decoder(object):
     def __init__(self, alphas, betas, steps):
-        self._betas = torch.zeros(betas.shape)
-        self._betas [:-1]= betas[:-1] * 1e6
-        self._betas[-1] = betas[-1]
+        self._betas = betas
         self._alphas = alphas
         self._steps = steps
         self._num_layers = self._betas.shape[0]
@@ -23,13 +21,16 @@ class Decoder(object):
 
             elif layer == 2:
                 self.network_space[layer][0][1:] = F.softmax(self._betas[layer][0][1:], dim=-1)
-                self.network_space[layer][1] = F.softmax(self._betas[layer][1], dim=-1)
+                self.network_space[layer][1] = F.softmax(self._betas[layer][1], dim=-1)            
+                self.network_space[layer][2] = F.softmax(self._betas[layer][2], dim=-1)
+
+
+            else:
                 self.network_space[layer][0][1:] = F.softmax(self._betas[layer][0][1:], dim=-1)
                 self.network_space[layer][1] = F.softmax(self._betas[layer][1], dim=-1)
                 self.network_space[layer][2] = F.softmax(self._betas[layer][2], dim=-1)
                 self.network_space[layer][3][:2] = F.softmax(self._betas[layer][3][:2], dim=-1)
-        print(self.network_space)
-
+        
     def viterbi_decode(self):
         prob_space = np.zeros((self.network_space.shape[:2]))
         path_space = np.zeros((self.network_space.shape[:2])).astype('int8')
