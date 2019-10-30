@@ -15,12 +15,10 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 
 <br/><br/>
 
-From the auto-deeplab paper |  Our half-sized model takes twice as long to train
+From the auto-deeplab paper |  Ours
 :---------------------------------------:|:-------------------------:
 ![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours2.png)
 
-***For half-sized model, set --filter_multiplier 4 --resize 358 --crop_size 224***
-<br/><br/>
 ***For full-sized model, leave parameters to their default setting***
 <br/><br/>
 ## Training Proceedure
@@ -86,6 +84,8 @@ CUDA_VISIBLE_DEVICES=0 python train_new_model.py --dataset cityscapes --saved_ar
 * numpy
 
 * pandas
+
+* apex
 
 ## References
 [1] : [Auto-DeepLab: Hierarchical Neural Architecture Search for Semantic Image Segmentation](https://arxiv.org/abs/1901.02985)
