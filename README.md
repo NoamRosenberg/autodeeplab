@@ -17,7 +17,7 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 
 From the auto-deeplab paper |  Ours
 :---------------------------------------:|:-------------------------:
-![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours2.png)
+![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours3.png)
 
 ***For full-sized model, leave parameters to their default setting***
 <br/><br/>
