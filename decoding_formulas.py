@@ -1,38 +1,18 @@
 import numpy as np
+import pdb
 import torch
 import torch.nn.functional as F
-from genotypes import PRIMITIVES
-from genotypes import Genotype
-
-def network_layer_to_space(net_arch):
-    for i, layer in enumerate(net_arch):
-        if i == 0:
-            space = np.zeros((1, 4, 3))
-            space[0][layer][0] = 1
-            prev = layer
-        else:
-            if layer == prev + 1:
-                sample = 0
-            elif layer == prev:
-                sample = 1
-            elif layer == prev - 1:
-                sample = 2
-            space1 = np.zeros((1, 4, 3))
-            space1[0][layer][sample] = 1
-            space = np.concatenate([space, space1], axis=0)
-            prev = layer
-    return space
-
+from retrain_model.new_model import network_layer_to_space
 
 class Decoder(object):
     def __init__(self, alphas, betas, steps):
         self._betas = betas
         self._alphas = alphas
         self._steps = steps
-        self._num_layers = len(self._betas)
+        self._num_layers = self._betas.shape[0]
         self.network_space = torch.zeros(12, 4, 3)
 
-        for layer in range(len(self._betas)):
+        for layer in range(self._num_layers):
             if layer == 0:
                 self.network_space[layer][0][1:] = F.softmax(self._betas[layer][0][1:], dim=-1)
             elif layer == 1:
@@ -41,14 +21,16 @@ class Decoder(object):
 
             elif layer == 2:
                 self.network_space[layer][0][1:] = F.softmax(self._betas[layer][0][1:], dim=-1)
-                self.network_space[layer][1] = F.softmax(self._betas[layer][1], dim=-1)
+                self.network_space[layer][1] = F.softmax(self._betas[layer][1], dim=-1)            
                 self.network_space[layer][2] = F.softmax(self._betas[layer][2], dim=-1)
+
+
             else:
                 self.network_space[layer][0][1:] = F.softmax(self._betas[layer][0][1:], dim=-1)
                 self.network_space[layer][1] = F.softmax(self._betas[layer][1], dim=-1)
                 self.network_space[layer][2] = F.softmax(self._betas[layer][2], dim=-1)
-                self.network_space[layer][3][:1] = F.softmax(self._betas[layer][3][:1], dim=-1)
-
+                self.network_space[layer][3][:2] = F.softmax(self._betas[layer][3][:2], dim=-1)
+        
     def viterbi_decode(self):
         prob_space = np.zeros((self.network_space.shape[:2]))
         path_space = np.zeros((self.network_space.shape[:2])).astype('int8')
@@ -82,7 +64,6 @@ class Decoder(object):
             actual_path[-i - 1] = actual_path[-i] + path_space[self._num_layers - i, actual_path[-i]]
 
         return actual_path, network_layer_to_space(actual_path)
-
 
     def dfs_decode(self):
         best_result = []
@@ -296,7 +277,7 @@ class Decoder(object):
                 n += 1
             return np.array(gene)
 
-        normalized_alphas = F.softmax(self.alphas, dim=-1).data.cpu().numpy()
-        gene_cell = _parse(normalized_alphas, self.steps)
+        normalized_alphas = F.softmax(self._alphas, dim=-1).data.cpu().numpy()
+        gene_cell = _parse(normalized_alphas, self._steps)
 
         return gene_cell

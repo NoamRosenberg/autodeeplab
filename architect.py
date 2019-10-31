@@ -1,9 +1,7 @@
 import torch
-import numpy as np
-import torch.nn as nn
 
 
-class Architect () :
+class Architect (object) :
     def __init__(self, model, args):
         self.network_momentum = args.momentum
         self.network_weight_decay = args.weight_decay

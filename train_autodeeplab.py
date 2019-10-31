@@ -1,22 +1,18 @@
-import argparse
 import os
 import numpy as np
+import torch.nn as nn
 from tqdm import tqdm
-import sys
-import torch
 from collections import OrderedDict
 from mypath import Path
 from dataloaders import make_data_loader
 from modeling.sync_batchnorm.replicate import patch_replication_callback
 from modeling.deeplab import *
 from utils.loss import SegmentationLosses
-from utils.calculate_weights import calculate_weigths_labels
 from utils.lr_scheduler import LR_Scheduler
 from utils.saver import Saver
 from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
 from auto_deeplab import AutoDeeplab
-from architect import Architect
 from config_utils.search_args import obtain_search_args
 from utils.copy_state_dict import copy_state_dict
 import apex

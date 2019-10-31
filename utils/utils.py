@@ -1,3 +1,4 @@
+import time
 import numpy as np
 
 
@@ -49,3 +50,6 @@ def inter_and_union(pred, mask, num_class):
 
     return (area_inter, area_union)
 
+def time_for_file():
+    ISOTIMEFORMAT='%d-%h-at-%H-%M-%S'
+    return '{}'.format(time.strftime(ISOTIMEFORMAT,time.gmtime(time.time())))

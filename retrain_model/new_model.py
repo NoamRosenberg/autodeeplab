@@ -161,7 +161,6 @@ class newModel(nn.Module):
         # else:
         return last_output, low_level_feature
 
-
     def get_params(self):
         bn_params = []
         non_bn_params = []
@@ -171,7 +170,6 @@ class newModel(nn.Module):
             else:
                 bn_params.append(param)
         return bn_params, non_bn_params
-
 
 
 def network_layer_to_space(net_arch):
@@ -218,12 +216,12 @@ def get_default_cell():
 
 
 def get_default_arch():
-    backbone = [0, 0, 0, 1, 2, 1, 2, 2, 3, 3, 2, 1]
+    backbone = [1, 0, 0, 1, 2, 1, 2, 2, 3, 3, 2, 1]
     cell_arch = get_default_cell()
-    return network_layer_to_space(backbone), cell_arch
+    return network_layer_to_space(backbone), cell_arch, backbone
 
 
 def get_default_net(args=None):
     filter_multiplier = args.filter_multiplier if args is not None else 20
-    path_arch, cell_arch = get_default_arch()
+    path_arch, cell_arch, backbone = get_default_arch()
     return newModel(path_arch, cell_arch, 19, 12, filter_multiplier=filter_multiplier, args=args)

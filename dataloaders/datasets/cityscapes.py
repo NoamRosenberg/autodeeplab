@@ -24,8 +24,13 @@ def twoTrainSeg(args, root=Path.db_root_dir('cityscapes')):
 class CityscapesSegmentation(data.Dataset):
     NUM_CLASSES = 19
 
-    def __init__(self, args, root=Path.db_root_dir('cityscapes'), split="train", indices_for_split=None):
+    CLASSES = [
+        'road', 'sidewalk', 'building', 'wall', 'fence', 'pole', 'traffic light',
+        'traffic sign', 'vegetation', 'terrain', 'sky', 'person', 'rider', 'car',
+        'truck', 'bus', 'train', 'motorcycle', 'bicycle'
+    ]
 
+    def __init__(self, args, root=Path.db_root_dir('cityscapes'), split="train", indices_for_split=None):
         self.root = root
         self.split = split
         self.args = args

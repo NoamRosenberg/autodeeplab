@@ -1,23 +1,25 @@
-import torch.nn as nn
-# from modeling.backbone.resnet import ResNet101
-from auto_deeplab import AutoDeeplab
-import warnings
-from config_utils.search_args import obtain_search_args
-from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
-
-#
-#
 import torch
-from retrain_model.build_autodeeplab import Retrain_Autodeeplab
-from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
-from utils.step_lr_scheduler import Iter_LR_Scheduler
-from utils.optimizer_distributed import Optimizer
+import numpy as np
+from decoding_formulas import Decoder
 
-args = obtain_retrain_autodeeplab_args()
+a = torch.from_numpy(np.load('result/alpha.npy'))
+b = torch.from_numpy(np.load('result/beta.npy'))
+b = b.numpy()
 
-args.num_classes = 19
-model = Retrain_Autodeeplab(args)
-optimizer = Optimizer(model, args, 5000)
-for i in range(5000):
-    optimizer.step()
-    print(optimizer.get_lr())
+max_min = np.max(b, axis=-1, keepdims=True) - np.min(b, axis=-1, keepdims=True)
+
+for i in range(b.shape[0]):
+    for j in range(b.shape[1]):
+        b[i, j] = (b[i, j] - np.min(b, axis=-1, keepdims=True)
+                   [i, j]) / max_min[i, j]
+
+print(b)
+
+
+b = torch.from_numpy(b)
+
+decoder = Decoder(a, b, 5)
+
+print(decoder.network_space)
+
+print(decoder.viterbi_decode())
