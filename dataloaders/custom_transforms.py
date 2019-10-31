@@ -197,6 +197,20 @@ class RandomCrop(object):
                 'label': mask}
 
 
+class RandomScale(object):
+    def __init__(self, scales=(1,)):
+        self.scales = scales
+
+    def __call__(self, sample):
+        img = sample['image']
+        mask = sample['label']
+        w, h = img.size
+        scale = random.choice(self.scales)
+        w, h = int(w * scale), int(h * scale)
+        return {'image': img,
+                'label': mask}
+
+
 class Retrain_Preprocess(object):
     def __init__(self, flip_prob, scale_range, crop, mean, std):
         self.flip_prob = flip_prob
@@ -213,7 +227,7 @@ class Retrain_Preprocess(object):
         if self.scale_range is not None:
             w, h = sample['image'].size
             rand_log_scale = math.log(self.scale_range[0], 2) + random.random() * \
-                             (math.log(self.scale_range[1], 2) - math.log(self.scale_range[0], 2))
+                (math.log(self.scale_range[1], 2) - math.log(self.scale_range[0], 2))
             random_scale = math.pow(2, rand_log_scale)
             new_size = (int(round(w * random_scale)), int(round(h * random_scale)))
             sample['image'] = sample['image'].resize(new_size, Image.ANTIALIAS)
@@ -239,13 +253,23 @@ class Retrain_Preprocess(object):
 
 class transform_tr(object):
     def __init__(self, args, mean, std):
-        self.composed_transforms = transforms.Compose([
-            FixedResize(resize=args.resize),
-            RandomCrop(crop_size=args.crop_size),
-            # tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size, fill=255),
-            # tr.RandomGaussianBlur(),
-            Normalize(mean, std),
-            ToTensor()])
+        if args.multi_scale is None:
+            self.composed_transforms = transforms.Compose([
+                FixedResize(resize=args.resize),
+                RandomCrop(crop_size=args.crop_size),
+                # tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size, fill=255),
+                # tr.RandomGaussianBlur(),
+                Normalize(mean, std),
+                ToTensor()])
+        else:
+            self.composed_transforms = transforms.Compose([
+                FixedResize(resize=args.resize),
+                RandomScale(scales=args.multi_scale),
+                RandomCrop(crop_size=args.crop_size),
+                # tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size, fill=255),
+                # tr.RandomGaussianBlur(),
+                Normalize(mean, std),
+                ToTensor()])
 
     def __call__(self, sample):
         return self.composed_transforms(sample)
