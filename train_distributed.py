@@ -5,6 +5,7 @@ import time
 import random
 import logging
 import datetime
+import os.path as osp
 
 import torch
 import torch.backends
@@ -21,6 +22,7 @@ from utils.optimizer_distributed import Optimizer
 from config_utils.retrain_config import config_factory
 from retrain_model.build_autodeeplab import Retrain_Autodeeplab
 from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
+from evaluate_distributed import MscEval
 
 
 def main():
@@ -56,7 +58,7 @@ def main():
             args.checkname = 'deeplab-' + str(args.backbone)
     # dataset
     kwargs = {'num_workers': args.workers, 'pin_memory': True, 'drop_last': True}
-    train_loader, args.num_classes = make_data_loader(args=args, **kwargs)
+    train_loader, args.num_classes, sampler = make_data_loader(args=args, **kwargs)
     # model
     model = Retrain_Autodeeplab(args)
     model.train()
@@ -71,8 +73,7 @@ def main():
     # optimizer
     optimizer = Optimizer(model, cfg.lr_start, cfg.momentum, cfg.weight_decay, cfg.warmup_steps,
                           cfg.warmup_start_lr, max_iteration, cfg.lr_power)
-    if dist.get_rank() == 0: 
-        
+    if dist.get_rank() == 0:
         print('======optimizer launch successfully , max_iteration {:}!======='.format(max_iteration))
 
     # train loop
@@ -87,6 +88,8 @@ def main():
             n_epoch = checkpoint['epoch']
         elif checkpoint['epoch'] is not None:
             args.train_mode = 'epoch'
+        model.module.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
 
     else:
         if args.train_mode == 'iter':
@@ -101,11 +104,13 @@ def main():
         for it in range(start_iter, cfg.max_iter):
             try:
                 sample = next(diter)
-                im, lb = sample['image'], sample['label']
             except StopIteration:
                 n_epoch += 1
+                sampler.set_epoch(n_epoch)
+                diter = iter(train_loader)
+                sample = next(diter)
 
-
+            im, lb = sample['image'].cuda(), sample['label'].cuda()
             lb = torch.squeeze(lb, 1)
 
             optimizer.zero_grad()
@@ -116,11 +121,6 @@ def main():
 
             loss_avg.append(loss.item())
             # print training log message
-
-            if it % 10000 == 0:
-                if dist.get_rank() == 0:
-                    torch.save(model.module.state_dict(), os.path.join(
-                        cfg.respth, 'iteration_' + str(it) + '_model_final.pth'))
 
             if it % cfg.msg_iter == 0 and not it == 0 and dist.get_rank() == 0:
                 loss_avg = sum(loss_avg) / len(loss_avg)
@@ -140,28 +140,28 @@ def main():
             it += 1
 
             if (cfg.msg_iter is not None) and (it % cfg.msg_iter == 0) and (it != 0):
-                if verbose:
+                if args.verbose:
                     logger.info('evaluating the model of iter:{}'.format(it))
-                    net.eval()
-                    evaluator = MscEval(cfg)
-                    mIOU, loss = evaluator(net, loss=criteria, multi_scale=False)
+                    model.eval()
+                    evaluator = MscEval(cfg, args)
+                    mIOU, loss = evaluator(model, criteria=criterion, multi_scale=False)
                     logger.info('mIOU is: {}, loss_eval is {}'.format(mIOU, loss))
-                    net.train()
-                else:
-                    net.cpu()
-                    save_name = 'iter_{}_naive_model.pth'.format(it)
-                    save_pth = osp.join(cfg.respth, save_name)
-                    state = net.module.state_dict() if hasattr(net, 'module') else net.state_dict()
 
-                    if dist.get_rank() == 0:
-                        torch.save(state, save_pth)
-                    logger.info('model of iter {} saved to: {}'.format(it, save_pth))
-                    net.cuda()
+                model.cpu()
+                save_name = 'iter_{}_naive_model.pth'.format(it)
+                save_pth = osp.join(cfg.respth, save_name)
+                state = model.module.state_dict() if hasattr(model, 'module') else model.state_dict()
 
+                checkpoint = {'state_dict': state, 'epoch': n_epoch, 'iter': it, 'optimizer': optimizer.optim.state_dict()}
+                if dist.get_rank() == 0:
+                    torch.save(state, save_pth)
+                logger.info('model of iter {} saved to: {}'.format(it, save_pth))
+                model.cuda()
+                model.train()
 
     elif args.train_mode is 'epoch':
-        for epoch in range(cfg.max_epoch):
-            for sample in train_loader:
+        for epoch in range(start_epoch, cfg.max_epoch):
+            for i, sample in enumerate(train_loader):
                 im = sample['image'].cuda()
                 lb = sample['label'].cuda()
                 lb = torch.squeeze(lb, 1)
@@ -175,27 +175,37 @@ def main():
                 loss_avg.append(loss.item())
                 # print training log message
 
-                if it % 10000 == 0:
-                    if dist.get_rank() == 0:
-                        torch.save(model.module.state_dict(), os.path.join(
-                            cfg.respth, 'iteration_' + str(it) + '_model_final.pth'))
+            if i % cfg.msg_iter == 0 and not (i == 0 and epoch == 0) and dist.get_rank() == 0:
+                loss_avg = sum(loss_avg) / len(loss_avg)
+                lr = optimizer.lr
+                ed = time.time()
+                t_intv, glob_t_intv = ed - start_time, ed - glob_start_time
+                eta = int((max_iteration - it) * (glob_t_intv / it))
+                eta = str(datetime.timedelta(seconds=eta))
+                msg = ', '.join(['iter: {it}/{max_iteration}', 'lr: {lr:4f}', 'loss: {loss:.4f}', 'eta: {eta}', 'time: {time:.4f}',
+                                 ]).format(it=it, max_iteration=max_iteration, lr=lr, loss=loss_avg, time=t_intv, eta=eta)
+                logger.info(msg)
+                loss_avg = []
 
-                if it % cfg.msg_iter == 0 and not it == 0 and dist.get_rank() == 0:
-                    loss_avg = sum(loss_avg) / len(loss_avg)
-                    lr = optimizer.lr
-                    ed = time.time()
-                    t_intv, glob_t_intv = ed - start_time, ed - glob_start_time
-                    eta = int((max_iteration - it) * (glob_t_intv / it))
-                    eta = str(datetime.timedelta(seconds=eta))
-                    msg = ', '.join(['iter: {it}/{max_iteration}', 'lr: {lr:4f}', 'loss: {loss:.4f}', 'eta: {eta}', 'time: {time:.4f}',
-                                     ]).format(it=it, max_iteration=max_iteration, lr=lr, loss=loss_avg, time=t_intv, eta=eta)
-                    # TODO : now the logger.info will error if iter > 350000, so use print haha
-                    if max_iteration > 350000:
-                        logger.info(msg)
-                    else:
-                        print(msg)
-                    loss_avg = []
-                it += 1
+            # save model and optimizer each epoch
+            if args.verbose:
+                logger.info('evaluating the model of iter:{}'.format(it))
+                model.eval()
+                evaluator = MscEval(cfg, args)
+                mIOU, loss = evaluator(model, criteria=criterion, multi_scale=False)
+                logger.info('mIOU is: {}, loss_eval is {}'.format(mIOU, loss))
+
+            model.cpu()
+            save_name = 'iter_{}_naive_model.pth'.format(it)
+            save_pth = osp.join(cfg.respth, save_name)
+            state = model.module.state_dict() if hasattr(model, 'module') else model.state_dict()
+
+            checkpoint = {'state_dict': state, 'epoch': n_epoch, 'iter': it, 'optimizer': optimizer.state_dict()}
+            if dist.get_rank() == 0:
+                torch.save(state, save_pth)
+            logger.info('model of iter {} saved to: {}'.format(it, save_pth))
+            model.cuda()
+            model.train()
 
     else:
         raise NotImplementedError

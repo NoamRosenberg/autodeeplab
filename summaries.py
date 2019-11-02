@@ -2,7 +2,7 @@ import os
 import torch
 from torchvision.utils import make_grid
 from tensorboardX import SummaryWriter
-from dataloaders.utils import decode_seg_map_sequence
+from dataloaders.dataloader_utils import decode_seg_map_sequence
 
 class TensorboardSummary(object):
     def __init__(self, directory):

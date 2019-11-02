@@ -15,15 +15,6 @@ from retrain_model.build_autodeeplab import Retrain_Autodeeplab
 from dataloaders.datasets.cityscapes import CityscapesSegmentation
 
 
-
-
-
-
-
-
-
-
-
 def main(start_epoch, epochs):
     assert torch.cuda.is_available(), NotImplementedError('No cuda available ')
     if not osp.exists('data/'):

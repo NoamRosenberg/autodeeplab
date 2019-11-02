@@ -39,6 +39,7 @@ class Config(object):
         # eval control
         self.eval_batchsize = 2
         self.eval_n_workers = 2
+        self.eval_scale = (1.0,)
         self.eval_scales = (0.25,0.5,0.75,1,1.25,1.5)
         self.eval_flip = True
 
