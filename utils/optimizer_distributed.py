@@ -104,8 +104,8 @@ class Optimizer(object):
         if self.it == self.warmup_steps+2 and dist.get_rank() == 0:
             logger.info('==> warmup done, start to implement poly lr strategy')
 
-    def load_state_dict(self, optimizer, iter):
-        self.it = iter
+    def load_state_dict(self, optimizer, iteration):
+        self.it = iteration if iteration is not None else 0
         self.optim.load_state_dict(optimizer)
 
     def zero_grad(self):

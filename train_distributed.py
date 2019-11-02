@@ -13,16 +13,16 @@ import torch.nn as nn
 import torch.backends.cudnn
 import torch.distributed as dist
 
-from utils.utils import prepare_seed
 from utils.loss import OhemCELoss
+from utils.utils import prepare_seed
 from utils.utils import time_for_file
+from evaluate_distributed import MscEval
 from dataloaders import make_data_loader
 from utils.logger import Logger, setup_logger
 from utils.optimizer_distributed import Optimizer
 from config_utils.retrain_config import config_factory
 from retrain_model.build_autodeeplab import Retrain_Autodeeplab
 from config_utils.re_train_autodeeplab import obtain_retrain_autodeeplab_args
-from evaluate_distributed import MscEval
 
 
 def main():
@@ -43,8 +43,6 @@ def main():
     prepare_seed(rand_seed)
     if args.local_rank == 0:
         log_string = 'seed-{}-time-{}'.format(rand_seed, time_for_file())
-        # train_log_string = 'train_' + log_string
-        # val_log_string = 'val_' + log_string
         train_logger = Logger(args, log_string)
         train_logger.log('Arguments : -------------------------------')
         for name, value in args._get_kwargs():
@@ -89,7 +87,7 @@ def main():
         elif checkpoint['epoch'] is not None:
             args.train_mode = 'epoch'
         model.module.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        optimizer.load_state_dict(checkpoint['optimizer'], checkpoint['iter'])
 
     else:
         if args.train_mode == 'iter':

@@ -158,7 +158,7 @@ def evaluate():
 
     # evaluator
     logger.info('compute the mIOU')
-    evaluator = MscEval(cfg)
+    evaluator = MscEval(cfg, args)
     mIOU = evaluator(net)
     logger.info('mIOU is: {:.6f}'.format(mIOU))
 
