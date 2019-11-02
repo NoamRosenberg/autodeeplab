@@ -1,4 +1,6 @@
 import time
+import torch
+import random
 import numpy as np
 
 
@@ -48,8 +50,15 @@ def inter_and_union(pred, mask, num_class):
     (area_mask, _) = np.histogram(mask, bins=num_class, range=(1, num_class))
     area_union = area_pred + area_mask - area_inter
 
-    return (area_inter, area_union)
+    return area_inter, area_union
 
 def time_for_file():
     ISOTIMEFORMAT='%d-%h-at-%H-%M-%S'
     return '{}'.format(time.strftime(ISOTIMEFORMAT,time.gmtime(time.time())))
+
+
+def prepare_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    np.random.seed(seed)
