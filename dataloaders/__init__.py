@@ -34,7 +34,7 @@ def make_data_loader(args, **kwargs):
             if args.autodeeplab == 'search':
                 return train_loader1, train_loader2, val_loader, test_loader, num_class
             elif args.autodeeplab == 'train':
-                return train_loader, num_class
+                return train_loader, num_class, sampler1
         else:
             raise NotImplementedError
 

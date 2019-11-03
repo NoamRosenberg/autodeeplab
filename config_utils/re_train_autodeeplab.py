@@ -40,5 +40,8 @@ def obtain_retrain_autodeeplab_args():
     parser.add_argument('--initial-fm', default=None, type=int)
     parser.add_argument('--mode', default='poly', type=str, help='how lr decline')
     parser.add_argument('--local_rank', dest='local_rank', type=int, default=-1, )
+    parser.add_argument('--train_mode', type=str, default='iter', choices=['iter', 'epoch'])
+
+
     args = parser.parse_args()
     return args

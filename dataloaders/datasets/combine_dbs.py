@@ -62,7 +62,7 @@ if __name__ == "__main__":
     from dataloaders import sbd
     import torch
     import numpy as np
-    from dataloaders.utils import decode_segmap
+    from dataloaders.dataloader_utils import decode_segmap
     import argparse
 
     parser = argparse.ArgumentParser()

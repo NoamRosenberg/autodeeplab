@@ -101,7 +101,7 @@ class CityscapesSegmentation(data.Dataset):
         return composed_transforms(sample)
 
 if __name__ == '__main__':
-    from dataloaders.utils import decode_segmap
+    from dataloaders.dataloader_utils import decode_segmap
     from torch.utils.data import DataLoader
     import matplotlib.pyplot as plt
     import argparse
