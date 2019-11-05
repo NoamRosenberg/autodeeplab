@@ -47,7 +47,7 @@ class Decoder(object):
                         continue
                     local_prob = []
                     for rate in range(self.network_space.shape[2]):  # k[0 : ➚, 1: ➙, 2 : ➘]
-                        if (sample == 0 and rate == 0) or (sample == 3 and rate == 2):
+                        if (sample == 0 and rate == 2) or (sample == 3 and rate == 0):
                             continue
                         else:
                             local_prob.append(prob_space[layer - 1][sample + 1 - rate] *
