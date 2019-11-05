@@ -180,7 +180,7 @@ class AutoDeeplab(nn.Module):
                     normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1)
                     normalized_betas[layer][1] = F.softmax(self.betas[layer][1].to(device=img_device), dim=-1)
                     normalized_betas[layer][2] = F.softmax(self.betas[layer][2].to(device=img_device), dim=-1)
-                    normalized_betas[layer][3][:2] = F.softmax(self.betas[layer][3][:1].to(device=img_device), dim=-1)
+                    normalized_betas[layer][3][:2] = F.softmax(self.betas[layer][3][:2].to(device=img_device), dim=-1)
 
         else:
             normalized_alphas = F.softmax(self.alphas, dim=-1)
