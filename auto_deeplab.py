@@ -387,8 +387,9 @@ class AutoDeeplab(nn.Module):
     def _initialize_alphas_betas(self):
         k = sum(1 for i in range(self._step) for n in range(2 + i))
         num_ops = len(PRIMITIVES)
-        alphas = torch.tensor(1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True)
-        betas = torch.tensor(1e-3 * torch.randn(12, 4, 3).cuda(), requires_grad=True)
+        # alphas = torch.tensor(1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True)
+        alphas = (1e-3 * torch.randn(k, num_ops)).clone().detach().requires_grad_(True)
+        betas = (1e-3 * torch.randn(12, 4, 3)).clone().detach().requires_grad_(True)
 
         self._arch_parameters = [
             alphas,

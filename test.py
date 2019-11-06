@@ -1,25 +1,43 @@
+from torch.utils.data.dataloader import DataLoader
+from dataloaders.datasets.cityscapes import CityscapesSegmentation
+from config_utils.search_args import obtain_search_args
+from utils.loss import SegmentationLosses
 import torch
 import numpy as np
-from decoding_formulas import Decoder
+from auto_deeplab import AutoDeeplab
 
-a = torch.from_numpy(np.load('result/alpha.npy'))
-b = torch.from_numpy(np.load('result/beta.npy'))
-b = b.numpy()
-
-max_min = np.max(b, axis=-1, keepdims=True) - np.min(b, axis=-1, keepdims=True)
-
-for i in range(b.shape[0]):
-    for j in range(b.shape[1]):
-        b[i, j] = (b[i, j] - np.min(b, axis=-1, keepdims=True)
-                   [i, j]) / max_min[i, j]
-
-print(b)
+model = AutoDeeplab(19, 12).cuda()
 
 
-b = torch.from_numpy(b)
+# a = torch.randn(2,3,65,65).cuda()
 
-decoder = Decoder(a, b, 5)
+# b = model(a)
 
-print(decoder.network_space)
+# # print(b)
 
-print(decoder.viterbi_decode())
+
+args = obtain_search_args()
+
+
+args.cuda = True
+criterion = SegmentationLosses(weight=None, cuda=args.cuda).build_loss(mode=args.loss_type)
+
+
+args.crop_size = 64
+
+dataset = CityscapesSegmentation(args, r'E:\BaiduNetdiskDownload\cityscapes', 'train')
+
+
+loader = DataLoader(dataset, batch_size=4)
+
+for i, sample in enumerate(loader):
+    image, label = sample['image'].cuda(), sample['label'].cuda()
+    print(image.shape)
+    print(label.shape)
+
+    prediction = model(image)
+
+    print(criterion(prediction, label))
+
+    if i == 0:
+        exit()
