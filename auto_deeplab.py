@@ -157,7 +157,7 @@ class AutoDeeplab(nn.Module):
         self.level_4.append(self.stem2(temp))
 
         count = 0
-        normalized_betas = torch.randn(12, 4, 3).cuda()
+        normalized_betas = torch.randn(self._num_layers, 4, 3).cuda()
         # Softmax on alphas and betas
         if torch.cuda.device_count() > 1:
             img_device = torch.device('cuda', x.get_device())
@@ -389,7 +389,7 @@ class AutoDeeplab(nn.Module):
         num_ops = len(PRIMITIVES)
         # alphas = torch.tensor(1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True)
         alphas = (1e-3 * torch.randn(k, num_ops)).clone().detach().requires_grad_(True)
-        betas = (1e-3 * torch.randn(12, 4, 3)).clone().detach().requires_grad_(True)
+        betas = (1e-3 * torch.randn(self._num_layers, 4, 3)).clone().detach().requires_grad_(True)
 
         self._arch_parameters = [
             alphas,
