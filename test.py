@@ -1,25 +1,37 @@
+import warnings
 import torch
-import numpy as np
-from decoding_formulas import Decoder
+from auto_deeplab import AutoDeeplab
+warnings.filterwarnings('ignore')
 
-a = torch.from_numpy(np.load('result/alpha.npy'))
-b = torch.from_numpy(np.load('result/beta.npy'))
-b = b.numpy()
+model = AutoDeeplab(19, 12).cuda()
 
-max_min = np.max(b, axis=-1, keepdims=True) - np.min(b, axis=-1, keepdims=True)
+criterion = torch.nn.MSELoss().cuda()
 
-for i in range(b.shape[0]):
-    for j in range(b.shape[1]):
-        b[i, j] = (b[i, j] - np.min(b, axis=-1, keepdims=True)
-                   [i, j]) / max_min[i, j]
-
-print(b)
+grads = {}
 
 
-b = torch.from_numpy(b)
+def save_grad(name):
+    def hook(grad):
+        grads[name] = grad
+    return hook
 
-decoder = Decoder(a, b, 5)
 
-print(decoder.network_space)
+x = torch.randn((2, 3, 64, 64), requires_grad=True).cuda()
 
-print(decoder.viterbi_decode())
+y = model(x)
+
+print(y.shape)
+
+
+label = torch.randn((2, 19, 64, 64)).cuda()
+
+z = criterion(y, label)
+# 为中间变量注册梯度保存接口，存储梯度时名字为 y。
+model.betas.register_hook(save_grad('y'))
+
+# 反向传播
+z.backward()
+
+# 查看 y 的梯度值
+print(grads['y'])
+print(grads['y'].shape)
