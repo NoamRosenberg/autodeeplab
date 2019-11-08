@@ -64,6 +64,8 @@ class Cell(nn.Module):
 
         # self.ReLUConvBN = ReLUConvBN(self.C_in, self.C_out, 1, 1, 0)
 
+        self._initialize_weights()
+
     def scale_dimension(self, dim, scale):
         assert isinstance(dim, int)
         return int((float(dim) - 1.0) * scale + 1.0) if dim % 2 else int(dim * scale)
@@ -136,3 +138,15 @@ class Cell(nn.Module):
             concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
             final_concates.append(concat_feature)
         return final_concates
+
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()

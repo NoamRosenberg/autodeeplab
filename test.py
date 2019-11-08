@@ -1,11 +1,32 @@
 import warnings
+from torch.utils.data.dataloader import DataLoader
+from dataloaders.datasets.cityscapes import CityscapesSegmentation
+from config_utils.search_args import obtain_search_args
+from utils.loss import SegmentationLosses
 import torch
+import numpy as np
 from auto_deeplab import AutoDeeplab
-warnings.filterwarnings('ignore')
 
 model = AutoDeeplab(19, 12).cuda()
 
-criterion = torch.nn.MSELoss().cuda()
+args = obtain_search_args()
+
+
+args.cuda = True
+criterion = SegmentationLosses(weight=None, cuda=args.cuda).build_loss(mode=args.loss_type)
+
+def save_grad(name):
+    def hook(grad):
+        grads[name] = grad
+    return hook
+
+args.crop_size = 64
+
+dataset = CityscapesSegmentation(args, r'E:\BaiduNetdiskDownload\cityscapes', 'train')
+
+
+loader = DataLoader(dataset, batch_size=2, shuffle=True)
+
 
 grads = {}
 
@@ -16,22 +37,33 @@ def save_grad(name):
     return hook
 
 
-x = torch.randn((2, 3, 64, 64), requires_grad=True).cuda()
+for i, sample in enumerate(loader):
+    image, label = sample['image'].cuda(), sample['label'].cuda()
 
-y = model(x)
+    # from thop import profile
 
-print(y.shape)
+    # params, flops = profile(model, inputs=(image, ))
 
+    # print(params)
+    # print(flops)
+    model.betas.register_hook(save_grad('y'))
 
-label = torch.randn((2, 19, 64, 64)).cuda()
+    prediction = model(image)
+    # y = 1e-3*torch.randn(12, 4, 3).cuda()
+    # criterion = torch.nn.MSELoss()
+    # z = criterion(prediction, label)
+    z = prediction.mean()
 
-z = criterion(y, label)
-# 为中间变量注册梯度保存接口，存储梯度时名字为 y。
-model.betas.register_hook(save_grad('y'))
+    z.backward()
 
-# 反向传播
-z.backward()
+    print(grads['y'])
+    print(grads['y'].shape)
+
+    # print(grads['y1'])
+    # print(grads['y1'].shape)
+
+    if i == 0:
+        exit()
+
 
 # 查看 y 的梯度值
-print(grads['y'])
-print(grads['y'].shape)

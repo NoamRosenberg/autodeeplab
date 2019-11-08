@@ -39,9 +39,22 @@ class NaiveBN(nn.Module):
             nn.BatchNorm2d(C_out, affine=affine),
             nn.ReLU()
         )
+        self._initialize_weights()
+
+
 
     def forward(self, x):
         return self.op(x)
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
 
 
 class ReLUConvBN(nn.Module):
@@ -60,16 +73,23 @@ class ReLUConvBN(nn.Module):
                 nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
                 nn.BatchNorm2d(C_out, affine=affine)
             )
+        self._initialize_weights()
+
+
 
     def forward(self, x):
         return self.op(x)
 
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
-
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
 class DilConv(nn.Module):
 
@@ -111,15 +131,23 @@ class DilConv(nn.Module):
                     nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
                     nn.BatchNorm2d(C_out, affine=affine),
                 )
+        self._initialize_weights()
+
+
 
     def forward(self, x):
         return self.op(x)
 
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
 
 class SepConv(nn.Module):
@@ -149,21 +177,31 @@ class SepConv(nn.Module):
                 nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
                 nn.BatchNorm2d(C_out, affine=affine),
             )
+        self._initialize_weights()
+
+
 
     def forward(self, x):
         return self.op(x)
 
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
-
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
 class Identity(nn.Module):
 
     def __init__(self):
         super(Identity, self).__init__()
+        self._initialize_weights()
+
+
 
     def forward(self, x):
         return x
@@ -174,23 +212,41 @@ class Identity(nn.Module):
                 nn.init.kaiming_normal_(ly.weight, a=1)
                 if not ly.bias is None: nn.init.constant_(ly.bias, 0)
 
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
 
 class Zero(nn.Module):
 
     def __init__(self, stride):
         super(Zero, self).__init__()
         self.stride = stride
+        self._initialize_weights()
+
+
 
     def forward(self, x):
         if self.stride == 1:
             return x.mul(0.)
         return x[:, :, ::self.stride, ::self.stride].mul(0.)
 
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
+
 
 
 class FactorizedReduce(nn.Module):
@@ -202,6 +258,9 @@ class FactorizedReduce(nn.Module):
         self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
         self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
         self.bn = nn.BatchNorm2d(C_out, affine=affine)
+        self._initialize_weights()
+
+
 
     def forward(self, x):
         x = self.relu(x)
@@ -214,6 +273,17 @@ class FactorizedReduce(nn.Module):
             if isinstance(ly, nn.Conv2d):
                 nn.init.kaiming_normal_(ly.weight, a=1)
                 if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
 
 class DoubleFactorizedReduce(nn.Module):
@@ -225,6 +295,8 @@ class DoubleFactorizedReduce(nn.Module):
         self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
         self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
         self.bn = nn.BatchNorm2d(C_out, affine=affine)
+        self._initialize_weights()
+
 
     def forward(self, x):
         x = self.relu(x)
@@ -232,12 +304,16 @@ class DoubleFactorizedReduce(nn.Module):
         out = self.bn(out)
         return out
 
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
-
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
 class FactorizedIncrease(nn.Module):
     def __init__(self, in_channel, out_channel):
@@ -250,15 +326,22 @@ class FactorizedIncrease(nn.Module):
             nn.Conv2d(self._in_channel, out_channel, 1, stride=1, padding=0),
             nn.BatchNorm2d(out_channel)
         )
+        self._initialize_weights()
+
 
     def forward(self, x):
         return self.op(x)
 
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
 
 class DoubleFactorizedIncrease(nn.Module):
@@ -272,15 +355,22 @@ class DoubleFactorizedIncrease(nn.Module):
             nn.Conv2d(self._in_channel, out_channel, 1, stride=1, padding=0),
             nn.BatchNorm2d(out_channel)
         )
+        self._initialize_weights()
+
 
     def forward(self, x):
         return self.op(x)
 
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
 
 class ASPP(nn.Module):
@@ -298,6 +388,7 @@ class ASPP(nn.Module):
         self.concate_conv = nn.Conv2d(in_channels * 3, in_channels, 1, bias=False, stride=1, padding=0)
         self.concate_bn = nn.BatchNorm2d(in_channels, momentum)
         self.final_conv = nn.Conv2d(in_channels, out_channels, 1, bias=False, stride=1, padding=0)
+        self._initialize_weights()
 
     def forward(self, x):
         conv11 = self.conv11(x)
@@ -317,8 +408,13 @@ class ASPP(nn.Module):
 
         return self.final_conv(concate)
 
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                torch.nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                if m.weight is not None:
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
