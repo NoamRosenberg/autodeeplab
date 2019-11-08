@@ -97,5 +97,7 @@ def obtain_search_args():
                         help='skip validation during training')
     parser.add_argument('--affine', default=False,
                         type=bool, help='whether use affine in BN')
+    parser.add_argument('--multi_scale', default=(0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0),
+                        type=bool, help='whether use multi_scale in train')
     args = parser.parse_args()
     return args

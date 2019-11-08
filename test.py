@@ -1,25 +1,65 @@
+import warnings
+from torch.utils.data.dataloader import DataLoader
+from dataloaders.datasets.cityscapes import CityscapesSegmentation
+from config_utils.search_args import obtain_search_args
+from utils.loss import SegmentationLosses
 import torch
 import numpy as np
-from decoding_formulas import Decoder
+from auto_deeplab import AutoDeeplab
 
-a = torch.from_numpy(np.load('result/alpha.npy'))
-b = torch.from_numpy(np.load('result/beta.npy'))
-b = b.numpy()
+model = AutoDeeplab(19, 12).cuda()
 
-max_min = np.max(b, axis=-1, keepdims=True) - np.min(b, axis=-1, keepdims=True)
-
-for i in range(b.shape[0]):
-    for j in range(b.shape[1]):
-        b[i, j] = (b[i, j] - np.min(b, axis=-1, keepdims=True)
-                   [i, j]) / max_min[i, j]
-
-print(b)
+args = obtain_search_args()
 
 
-b = torch.from_numpy(b)
+args.cuda = True
+criterion = SegmentationLosses(weight=None, cuda=args.cuda).build_loss(mode=args.loss_type)
 
-decoder = Decoder(a, b, 5)
 
-print(decoder.network_space)
+args.crop_size = 64
 
-print(decoder.viterbi_decode())
+dataset = CityscapesSegmentation(args, r'E:\BaiduNetdiskDownload\cityscapes', 'train')
+
+
+loader = DataLoader(dataset, batch_size=2, shuffle=True)
+
+
+grads = {}
+
+
+def save_grad(name):
+    def hook(grad):
+        grads[name] = grad
+    return hook
+
+
+for i, sample in enumerate(loader):
+    image, label = sample['image'].cuda(), sample['label'].cuda()
+
+    # from thop import profile
+
+    # params, flops = profile(model, inputs=(image, ))
+
+    # print(params)
+    # print(flops)
+    model.betas.register_hook(save_grad('y'))
+
+    prediction = model(image)
+    # y = 1e-3*torch.randn(12, 4, 3).cuda()
+    # criterion = torch.nn.MSELoss()
+    # z = criterion(prediction, label)
+    z = prediction.mean()
+
+    z.backward()
+
+    print(grads['y'])
+    print(grads['y'].shape)
+
+    # print(grads['y1'])
+    # print(grads['y1'].shape)
+
+    if i == 0:
+        exit()
+
+
+# 查看 y 的梯度值
