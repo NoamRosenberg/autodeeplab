@@ -160,48 +160,50 @@ class AutoDeeplab(nn.Module):
         normalized_betas = torch.randn(self._num_layers, 4, 3).cuda()
         # Softmax on alphas and betas
         if torch.cuda.device_count() > 1:
+            print('1')
             img_device = torch.device('cuda', x.get_device())
             normalized_alphas = F.softmax(self.alphas.to(device=img_device), dim=-1)
 
             # normalized_betas[layer][ith node][0 : ➚, 1: ➙, 2 : ➘]
             for layer in range(len(self.betas)):
                 if layer == 0:
-                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1)
+                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1) * (2/3)
 
                 elif layer == 1:
-                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1)
+                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1) * (2/3)
                     normalized_betas[layer][1] = F.softmax(self.betas[layer][1].to(device=img_device), dim=-1)
 
                 elif layer == 2:
-                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1)
+                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1) * (2/3)
                     normalized_betas[layer][1] = F.softmax(self.betas[layer][1].to(device=img_device), dim=-1)
                     normalized_betas[layer][2] = F.softmax(self.betas[layer][2].to(device=img_device), dim=-1)
                 else:
-                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1)
+                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:].to(device=img_device), dim=-1) * (2/3)
                     normalized_betas[layer][1] = F.softmax(self.betas[layer][1].to(device=img_device), dim=-1)
                     normalized_betas[layer][2] = F.softmax(self.betas[layer][2].to(device=img_device), dim=-1)
-                    normalized_betas[layer][3][:2] = F.softmax(self.betas[layer][3][:2].to(device=img_device), dim=-1)
+                    normalized_betas[layer][3][:2] = F.softmax(self.betas[layer][3][:1].to(device=img_device), dim=-1) * (2/3)
 
         else:
             normalized_alphas = F.softmax(self.alphas, dim=-1)
 
             for layer in range(len(self.betas)):
                 if layer == 0:
-                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:], dim=-1)
+                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:], dim=-1) * (2/3)
 
                 elif layer == 1:
-                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:], dim=-1)
+                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:], dim=-1) * (2/3)
                     normalized_betas[layer][1] = F.softmax(self.betas[layer][1], dim=-1)
 
                 elif layer == 2:
-                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:], dim=-1)
+                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:], dim=-1) * (2/3)
                     normalized_betas[layer][1] = F.softmax(self.betas[layer][1], dim=-1)
                     normalized_betas[layer][2] = F.softmax(self.betas[layer][2], dim=-1)
                 else:
-                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:], dim=-1)
+                    normalized_betas[layer][0][1:] = F.softmax(self.betas[layer][0][1:], dim=-1) * (2/3)
                     normalized_betas[layer][1] = F.softmax(self.betas[layer][1], dim=-1)
                     normalized_betas[layer][2] = F.softmax(self.betas[layer][2], dim=-1)
-                    normalized_betas[layer][3][:2] = F.softmax(self.betas[layer][3][:2], dim=-1)
+                    normalized_betas[layer][3][:2] = F.softmax(self.betas[layer][3][:2], dim=-1) * (2/3)
+
 
         for layer in range(self._num_layers):
 

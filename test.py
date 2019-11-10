@@ -15,6 +15,10 @@ args = obtain_search_args()
 args.cuda = True
 criterion = SegmentationLosses(weight=None, cuda=args.cuda).build_loss(mode=args.loss_type)
 
+def save_grad(name):
+    def hook(grad):
+        grads[name] = grad
+    return hook
 
 args.crop_size = 64
 
