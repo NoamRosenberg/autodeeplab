@@ -46,13 +46,13 @@ class Cell(nn.Module):
         if self.downup_sample != 0:
             feature_size_h = self.scale_dimension(prev_input.shape[2], self.scale)
             feature_size_w = self.scale_dimension(prev_input.shape[3], self.scale)
-            prev_input = F.interpolate(prev_input, [feature_size_h, feature_size_w], mode='bilinear', align_corners=True)
+            s1 = F.interpolate(prev_input, [feature_size_h, feature_size_w], mode='bilinear', align_corners=True)
         if (prev_prev_input.shape[2] != prev_input.shape[2]) or (prev_prev_input.shape[3] != prev_input.shape[3]):
-            prev_prev_input = F.interpolate(prev_prev_input, (prev_input.shape[2], prev_input.shape[3]),
+            s0 = F.interpolate(prev_prev_input, (prev_input.shape[2], prev_input.shape[3]),
                                             mode='bilinear', align_corners=True)
 
-        s0 = self.pre_preprocess(prev_prev_input) if (prev_prev_input.shape[1] != self.C_out) else prev_prev_input
-        s1 = self.preprocess(prev_input)
+        s0 = self.pre_preprocess(s0) if (s0.shape[1] != self.C_out) else s0
+        s1 = self.preprocess(s1)
 
         states = [s0, s1]
         # print(s1.shape)
