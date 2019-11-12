@@ -42,20 +42,20 @@ class Cell(nn.Module):
         return (int((float(dim) - 1.0) * scale + 1.0) if dim % 2 == 1 else int((float(dim) * scale)))
 
     def forward(self, prev_prev_input, prev_input):
-
+        s0 = prev_prev_input
+        s1 = prev_input
         if self.downup_sample != 0:
-            feature_size_h = self.scale_dimension(prev_input.shape[2], self.scale)
-            feature_size_w = self.scale_dimension(prev_input.shape[3], self.scale)
-            prev_input = F.interpolate(prev_input, [feature_size_h, feature_size_w], mode='bilinear', align_corners=True)
-        if (prev_prev_input.shape[2] != prev_input.shape[2]) or (prev_prev_input.shape[3] != prev_input.shape[3]):
-            prev_prev_input = F.interpolate(prev_prev_input, (prev_input.shape[2], prev_input.shape[3]),
+            feature_size_h = self.scale_dimension(s1.shape[2], self.scale)
+            feature_size_w = self.scale_dimension(s1.shape[3], self.scale)
+            s1 = F.interpolate(s1, [feature_size_h, feature_size_w], mode='bilinear', align_corners=True)
+        if (s0.shape[2] != s1.shape[2]) or (s0.shape[3] != s1.shape[3]):
+            s0 = F.interpolate(s0, (s1.shape[2], s1.shape[3]),
                                             mode='bilinear', align_corners=True)
 
-        s0 = self.pre_preprocess(prev_prev_input) if (prev_prev_input.shape[1] != self.C_out) else prev_prev_input
-        s1 = self.preprocess(prev_input)
+        s0 = self.pre_preprocess(s0) if (s0.shape[1] != self.C_out) else s0
+        s1 = self.preprocess(s1)
 
         states = [s0, s1]
-        # print(s1.shape)
         offset = 0
         ops_index = 0
         for i in range(self._steps):
@@ -75,7 +75,7 @@ class Cell(nn.Module):
             states.append(s)
 
         concat_feature = torch.cat(states[-self.block_multiplier:], dim=1)
-        # return prev_input, self.ReLUConvBN(concat_feature)
+
         return prev_input, concat_feature
 
 
