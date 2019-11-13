@@ -13,14 +13,18 @@ Following the popular trend of modern CNN architectures having a two level hiera
 Auto-Deeplab acheives a better performance while minimizing the size of the final model.
 ![model results](./images/results.png)
 
+Our results:79.8 miou with Autodeeplab-M, train for 4000epochs and batch_size=16, about 800K iters
+
+
 <br/><br/>
 
 From the auto-deeplab paper |  Ours
 :---------------------------------------:|:-------------------------:
-![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/valmIOUours3.png)
+![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/28_40.png)
 
-***For full-sized model, leave parameters to their default setting***
+![our mIOU](./images/0_28.png)
 <br/><br/>
+
 ## Training Proceedure
 
 **All together there are 3 stages:**
@@ -33,26 +37,32 @@ From the auto-deeplab paper |  Ours
 
 <br/><br/>
 
-## Architecture Search
+**Hardware Requirement**
+
+* For architecture search, you need at least an 15G GPU, or two 11G gpus(in this way, global pooling in aspp is banned, not recommended)
+
+* For retraining autodeeplab-M or autodeeplab-S, you need at least n more than 11G gpus to re-train with batch size 2n without distributed
+
+* For retraining autodeeplab-L, you need at least n more than 11G gpus to re-train with batch size 2n with distributed
+ 
+ ## Architecture Search
+
 
 ***Begin Architecture Search***
 
 **Start Training**
+
 ```
 CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes
 ```
 
 **Resume Training**
+
 ```
 CUDA_VISIBLE_DEVICES=0 python train_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
 
-**Multi-GPU Training**
-```
-CUDA_VISIBLE_DEVICES=0,1 python train_autodeeplab.py --dataset cityscapes --batch_size 2
-```
-
-## Load, Decode and Re-train
+## Re-train
 
 ***Now that you're done training the search algorithm, it's time to decode the search space and find your new optimal architecture. 
 After that just build your new model and begin training it***
@@ -63,10 +73,22 @@ After that just build your new model and begin training it***
 CUDA_VISIBLE_DEVICES=0 python decode_autodeeplab.py --dataset cityscapes --resume /AutoDeeplabpath/checkpoint.pth.tar
 ```
 
-**Build and Train new model**
+## Retrain
+
+**Train without distributed**
 ```
-CUDA_VISIBLE_DEVICES=0 python train_new_model.py --dataset cityscapes --saved_arch_path /AutoDeeplabpathtosaveddecodings/
+python train.py
 ```
+
+**Train with distributed**
+```
+CUDA_VISIBLE_DEVICES=0,1,2,···,n python -m torch.distributed.launch --nproc_per_node=n train_distributed.py  
+```
+
+## Result models
+
+We provided models after search and retrain [[baidu drive (passwd: xm9z)]](https://pan.baidu.com/s/1gt8wnMhqfNOsEVg0gdaWMw) [[google drive]]()
+
 ## Requirements
 
 * Pytorch version 1.1
@@ -90,6 +112,16 @@ CUDA_VISIBLE_DEVICES=0 python train_new_model.py --dataset cityscapes --saved_ar
 ## References
 [1] : [Auto-DeepLab: Hierarchical Neural Architecture Search for Semantic Image Segmentation](https://arxiv.org/abs/1901.02985)
 
-[2] : [pytorch-deeplab-xception](https://github.com/jfzhang95/pytorch-deeplab-xception)
+[2] : [Thanks for jfzhang's deeplab v3+ implemention of pytorch](https://github.com/jfzhang95/pytorch-deeplab-xception)
 
-[3] : [Some code for the project was taken from here](https://github.com/MenghaoGuo/AutoDeeplab)
+[3] : [Thanks for MenghaoGuo's autodeeplab model implemention](https://github.com/MenghaoGuo/AutoDeeplab)
+
+[4] : [Thanks for CoinCheung's deeplab v3+ implemention of pytorch](https://github.com/CoinCheung/DeepLab-v3-plus-cityscapes)
+
+[5] : [Thanks for chenxi's deeplab v3 implemention of pytorch](https://github.com/chenxi116/DeepLabv3.pytorch)
+
+##TODO
+
+* Retrain our search model
+
+* adding support for other datasets(e.g. VOC, ADE20K, COCO and so on.)
