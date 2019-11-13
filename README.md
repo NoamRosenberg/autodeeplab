@@ -14,15 +14,13 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 ![model results](./images/results.png)
 
 Our results:79.8 miou with Autodeeplab-M, train for 4000epochs and batch_size=16, about 800K iters
-
-
 <br/><br/>
-
+Our Search implementation currently achieves BETTER results than that of the authors in the original AutoDeeplab paper. Awesome!
+<br/><br/>
+Our search results
 From the auto-deeplab paper |  Ours
 :---------------------------------------:|:-------------------------:
 ![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/28_40.png)
-
-![our mIOU](./images/0_28.png)
 <br/><br/>
 
 ## Training Proceedure
