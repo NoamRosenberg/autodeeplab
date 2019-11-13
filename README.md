@@ -18,9 +18,9 @@ Our results:79.8 miou with Autodeeplab-M, train for 4000epochs and batch_size=16
 Our Search implementation currently achieves BETTER results than that of the authors in the original AutoDeeplab paper. Awesome!
 <br/><br/>
 Our search results
-From the auto-deeplab paper |  Ours  
-:---------------------------------------:|:-------------------------:  
-![paper mIOU](./images/valmIOUpaper.png) | ![our mIOU](./images/28_40.png)
+:From the auto-deeplab paper :|:  Ours : 
+:---------------------------------------:|:-------------------------: 
+:![paper mIOU](./images/valmIOUpaper.png) :|: ![our mIOU](./images/28_40.png): 
 <br/><br/>
 
 ## Training Proceedure
