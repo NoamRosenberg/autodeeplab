@@ -1,7 +1,5 @@
-# AutoML for Image Segmentation and Detection
-This is an open-source project of AutoML for object detection & segmentation as well as semantic segmentation.
-
-Currently this repo contains a pytorch implementation for [Auto-Deeplab](https://arxiv.org/abs/1901.02985). 
+# AutoML for Image Semantic Segmentation
+Currently this repo contains a pytorch implementation for [Auto-Deeplab](https://arxiv.org/abs/1901.02985) which out-performs that of the original paper. 
 
 
 Following the popular trend of modern CNN architectures having a two level hierarchy. Auto-Deeplab forms a dual level search space, searching for optimal network and cell architecture.
