@@ -95,6 +95,8 @@ def obtain_search_args():
                         help='evaluuation interval (default: 1)')
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
+    parser.add_argument('--dist', action='store_true', default=False,
+                        help='skip validation during training')
     parser.add_argument('--affine', default=False,
                         type=bool, help='whether use affine in BN')
     parser.add_argument('--multi_scale', default=(0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0),
