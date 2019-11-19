@@ -27,11 +27,6 @@ class AutoDeeplab(nn.Module):
             nn.ReLU()
         )
         self.stem1 = nn.Sequential(
-            nn.Conv2d(half_f_initial * self._block_multiplier, half_f_initial * self._block_multiplier, 3, stride=1, padding=1),
-            nn.BatchNorm2d(half_f_initial * self._block_multiplier),
-            nn.ReLU()
-        )
-        self.stem2 = nn.Sequential(
             nn.Conv2d(half_f_initial * self._block_multiplier, f_initial * self._block_multiplier, 3, stride=2, padding=1),
             nn.BatchNorm2d(f_initial * self._block_multiplier),
             nn.ReLU()
@@ -153,8 +148,7 @@ class AutoDeeplab(nn.Module):
         self.level_16 = []
         self.level_32 = []
         temp = self.stem0(x)
-        temp = self.stem1(temp)
-        self.level_4.append(self.stem2(temp))
+        self.level_4.append(self.stem1(temp))
 
         count = 0
         normalized_betas = torch.randn(self._num_layers, 4, 3).cuda()
