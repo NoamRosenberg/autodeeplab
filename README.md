@@ -1,5 +1,5 @@
 # AutoML for Image Semantic Segmentation
-Currently this repo contains a pytorch implementation for [Auto-Deeplab](https://arxiv.org/abs/1901.02985) which out-performs that of the original paper. 
+Currently this repo contains a pytorch implementation of [Auto-Deeplab](https://arxiv.org/abs/1901.02985) which **out-performs** that of the original paper. 
 
 
 Following the popular trend of modern CNN architectures having a two level hierarchy. Auto-Deeplab forms a dual level search space, searching for optimal network and cell architecture.
@@ -13,7 +13,7 @@ Auto-Deeplab acheives a better performance while minimizing the size of the fina
 
 Our results:79.8 miou with Autodeeplab-M, train for 4000epochs and batch_size=16, about 800K iters
 <br/><br/>
-Our Search implementation currently achieves BETTER results than that of the authors in the original AutoDeeplab paper. Awesome!
+Our Search implementation currently achieves **BETTER** results than that of the authors in the original AutoDeeplab paper. Awesome!
 <br/><br/>
 Search results from the auto-deeplab paper which achieve 35% after 40 epochs of searching:    
 ![paper mIOU](./images/valmIOUpaper.png)  
