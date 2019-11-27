@@ -258,13 +258,15 @@ class FactorizedReduce(nn.Module):
         self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
         self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
         self.bn = nn.BatchNorm2d(C_out, affine=affine)
+        self.pad = nn.ConstantPad2d((0, 1, 0, 1), 0)
         self._initialize_weights()
 
 
 
     def forward(self, x):
         x = self.relu(x)
-        out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
+        y = self.pad(x)
+        out = torch.cat([self.conv_1(x), self.conv_2(y[:, :, 1:, 1:])], dim=1)
         out = self.bn(out)
         return out
 
@@ -295,12 +297,14 @@ class DoubleFactorizedReduce(nn.Module):
         self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
         self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=4, padding=0, bias=False)
         self.bn = nn.BatchNorm2d(C_out, affine=affine)
+        self.pad = nn.ConstantPad2d((0, 1, 0, 1), 0)
         self._initialize_weights()
 
 
     def forward(self, x):
         x = self.relu(x)
-        out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
+        y = self.pad(x)
+        out = torch.cat([self.conv_1(x), self.conv_2(y[:, :, 1:, 1:])], dim=1)
         out = self.bn(out)
         return out
 
